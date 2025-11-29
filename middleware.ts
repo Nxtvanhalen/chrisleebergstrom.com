@@ -10,6 +10,7 @@ const BLOCKED_IPS = [
     '192.0.2.1',  // Tencent Cloud "Fake iPhone"
     '192.0.2.1', // Spam Data Center
     '192.0.2.1',  // The Aggressive WordPress Bot
+    '192.0.2.1', // Russian Data Center Scraper
 ];
 
 // 2. THE BAD AGENTS: Bots that identified themselves
