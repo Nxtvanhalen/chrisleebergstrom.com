@@ -10,8 +10,20 @@ const BLOCKED_IPS = [
     '192.0.2.1', // Spam Data Center
     '192.0.2.1',  // The Aggressive WordPress Bot
     '192.0.2.1', // Russian Data Center Scraper
-    '192.0.2.1', // <--- Add the new M247 IP
-    '192.0.2.1', // <--- Add the Korean XMLRPC attacker
+    '192.0.2.1', // M247 IP
+    '192.0.2.1', // Korean XMLRPC attacker
+    // Spoofed Mobile UA attackers (Dec 2025)
+    '192.0.2.1',   // Spoofed Mobile UA
+    '192.0.2.1', // Spoofed Mobile UA
+    '192.0.2.1',   // Spoofed Mobile UA
+    '192.0.2.1',  // Spoofed Mobile UA
+    '192.0.2.1',// Spoofed Mobile UA
+    '192.0.2.1',  // Spoofed Mobile UA
+    '192.0.2.1',  // Spoofed Mobile UA
+    '192.0.2.1',   // Spoofed Mobile UA
+    '192.0.2.1',   // Spoofed Mobile UA
+    '192.0.2.1',   // Spoofed Mobile UA
+    '192.0.2.1', // Spoofed Mobile UA
 ];
 
 // 2. THE BAD AGENTS
@@ -36,6 +48,7 @@ const BLOCKED_PATHS = [
 // 4. KNOWN CLOUD SUBNETS
 const DATA_CENTER_RANGES = [
     '43.131.', '43.156.', '170.106.', '45.148.', '99.79.', '110.166.',
+    '49.51.', '43.135.', '150.109.', '43.165.', '43.130.', '43.159.', // Dec 2025 additions
 ];
 
 export function middleware(request: NextRequest) {
