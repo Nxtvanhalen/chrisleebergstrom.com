@@ -30,6 +30,10 @@ const BLOCKED_IPS = [
     '192.0.2.1', // CRITICAL: wp-login.php credential hunting attack
     '192.0.2.1', // Spoofed Bot: Cloud IP impersonating iPhone
     '192.0.2.1', // Tencent Cloud spoofing iPhone UA
+    // Dec 29 2025 - Web shell scanners & credential hunters
+    '192.0.2.1',  // High volume web shell/script scanning (14 requests in 5s)
+    '192.0.2.1', // Credential hunting attempt
+    '192.0.2.1',   // Credential hunting attempt
     // MONITOR (not blocked yet): '192.0.2.1' - High traffic volume, rapid non-cached fetching - Dec 2025
 ];
 
