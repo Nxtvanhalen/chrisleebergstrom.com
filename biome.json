@@ -63,6 +63,7 @@
       "types/**/*.ts",
       "tests/**/*.ts",
       "proxy.ts",
+      "playwright.config.ts",
       "instrumentation.ts",
       "instrumentation-client.ts",
       "sentry.server.config.ts",

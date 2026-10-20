@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+  <channel>
+    <title><![CDATA[Chris Lee Bergstrom &amp; Co]]></title>
+    <description><![CDATA[Notes on AI, live entertainment &amp; systems thinking]]></description>
+    <link>https://chrisleebergstrom.substack.com</link>
+    <language>en</language>
+    <item>
+      <title><![CDATA[The Archivist &#8212; Part One]]></title>
+      <description><![CDATA[A short teaser &amp; intro.]]></description>
+      <link>https://chrisleebergstrom.substack.com/p/the-archivist</link>
+      <guid isPermaLink="false">archivist-1</guid>
+      <dc:creator><![CDATA[Chris Lee Bergstrom]]></dc:creator>
+      <pubDate>Tue, 01 Oct 2026 12:00:00 GMT</pubDate>
+      <content:encoded><![CDATA[<p>The lights went down at <strong>eleven</strong>. Nobody noticed the archivist &#x1F3B8; slip in &#8212; or the ledger under her arm.</p><p>This paragraph pads the body out past the two hundred character snippet limit so that the truncation branch is exercised by the test. Still going. And a little more for good measure.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Context is the bottleneck</title>
+      <description><![CDATA[<p>Short post with only a <em>description</em>.</p>]]></description>
+      <link>https://chrisleebergstrom.substack.com/p/context</link>
+      <pubDate>Wed, 24 Sep 2026 09:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Three</title>
+      <link>https://chrisleebergstrom.substack.com/p/three</link>
+      <pubDate>Mon, 15 Sep 2026 09:30:00 GMT</pubDate>
+      <description><![CDATA[Three]]></description>
+    </item>
+    <item>
+      <title>Four</title>
+      <link>https://chrisleebergstrom.substack.com/p/four</link>
+      <pubDate>Mon, 08 Sep 2026 09:30:00 GMT</pubDate>
+      <description><![CDATA[Four]]></description>
+    </item>
+    <item>
+      <title>Five</title>
+      <link>https://chrisleebergstrom.substack.com/p/five</link>
+      <pubDate>Mon, 01 Sep 2026 09:30:00 GMT</pubDate>
+      <description><![CDATA[Five]]></description>
+    </item>
+    <item>
+      <title>Six — should be dropped by the post cap</title>
+      <link>https://chrisleebergstrom.substack.com/p/six</link>
+      <pubDate>Mon, 25 Aug 2026 09:30:00 GMT</pubDate>
+      <description><![CDATA[Six]]></description>
+    </item>
+  </channel>
+</rss>

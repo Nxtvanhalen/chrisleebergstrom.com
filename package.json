@@ -1,21 +1,29 @@
 {
-  "name": "frontend",
+  "name": "chrisleebergstrom-com",
   "version": "1.0.0",
   "private": true,
+  "description": "chrisleebergstrom.com — portfolio site for Chris Lee Bergstrom: Next.js App Router, per-request CSP nonces, and EVE, the site's OpenAI-backed concierge.",
+  "homepage": "https://chrisleebergstrom.com",
+  "license": "AGPL-3.0-only",
+  "packageManager": "bun@1.4.2",
+  "engines": {
+    "bun": ">=1.4.2"
+  },
   "scripts": {
     "dev": "bun --bun next dev",
     "build": "bun --bun next build",
     "start": "bun --bun next start",
-    "lint": "biome lint app components context proxy.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts",
-    "lint:fix": "biome check --write app components context proxy.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts",
-    "format": "biome format --write app components context proxy.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts"
+    "lint": "biome lint app components context lib tests proxy.ts playwright.config.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts",
+    "lint:fix": "biome check --write app components context lib tests proxy.ts playwright.config.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts",
+    "format": "biome format --write app components context lib tests proxy.ts playwright.config.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts",
+    "check": "biome ci app components context lib tests proxy.ts playwright.config.ts instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.shared.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test tests/unit tests/integration",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.1.0",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.6.3",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
     "fast-xml-parser": "^5.11.1",
     "motion": "^13.4.4",
     "next": "^16.3.6",
@@ -26,11 +34,17 @@
     "remark-gfm": "^4.0.1",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
     "vanilla-cookieconsent": "^3.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.14"
+    "@axe-core/playwright": "^4.14.0",
+    "@biomejs/biome": "^2.5.14",
+    "@playwright/test": "^1.64.1",
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "postcss": "^8.5.28"

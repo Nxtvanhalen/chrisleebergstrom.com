@@ -9,6 +9,12 @@ node_modules/
 .vercel
 *.tsbuildinfo
 
+# Playwright output
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+
 # Next.js auto-generated TypeScript reference — regenerated between
 # dev (./.next/dev/types/routes.d.ts) and build (./.next/types/routes.d.ts)
 # which causes local churn. Next creates it on demand; no value in tracking.

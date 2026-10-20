@@ -231,24 +231,41 @@ export function createEveNdjsonStream(
       };
 
       try {
-        const { done, value } = await reader.read();
-        if (closed) return;
+        // Keep reading until this pull enqueues something. A pull that resolves
+        // without enqueueing is not re-invoked, so a chunk carrying only
+        // bookkeeping events (response.created, output_item.added…) would
+        // otherwise stall the consumer forever.
+        while (true) {
+          const { done, value } = await reader.read();
+          if (closed) return;
 
-        if (!done) {
-          for (const event of reply.push(decoder.decode(value, { stream: true }))) send(event);
-          // Stop reading as soon as OpenAI says the reply is over; there is
-          // nothing useful after a terminal event.
-          if (!reply.finished()) return;
-          reader.cancel().catch(() => {});
-        }
+          if (!done) {
+            let sent = false;
+            for (const event of reply.push(decoder.decode(value, { stream: true }))) {
+              send(event);
+              sent = true;
+            }
+            // Stop reading as soon as OpenAI says the reply is over; there is
+            // nothing useful after a terminal event.
+            if (!reply.finished()) {
+              if (sent) return;
+              continue;
+            }
+            reader.cancel().catch(() => {});
+          }
 
-        const terminal = reply.finish();
-        if (terminal.type === 'error') {
-          const failure = reply.failure() ?? { code: 'disconnected', detail: 'stream ended early' };
-          options.onFailure?.(failure);
+          const terminal = reply.finish();
+          if (terminal.type === 'error') {
+            const failure = reply.failure() ?? {
+              code: 'disconnected',
+              detail: 'stream ended early',
+            };
+            options.onFailure?.(failure);
+          }
+          send(terminal);
+          close();
+          return;
         }
-        send(terminal);
-        close();
       } catch (error: unknown) {
         if (closed) return;
         // A cancelled consumer (visitor closed the panel) is not a failure.

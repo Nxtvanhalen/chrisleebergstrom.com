@@ -1,0 +1,5 @@
+[test]
+# `bun test` with no arguments only looks under tests/. Playwright specs there
+# are named *.e2e.ts (not *.spec.ts) so bun's discovery never picks them up;
+# `bun run test:e2e` runs those.
+root = "tests"

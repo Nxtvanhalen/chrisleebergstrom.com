@@ -101,9 +101,7 @@ export function isFromBlockedPrefix(ip: string, prefixes: readonly string[]): bo
 /** First hop of x-forwarded-for (set by Render's edge), else x-real-ip, else 'unknown'. */
 export function getClientIp(headers: Pick<Headers, 'get'>): string {
   return (
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    headers.get('x-real-ip') ||
-    'unknown'
+    headers.get('x-forwarded-for')?.split(',')[0]?.trim() || headers.get('x-real-ip') || 'unknown'
   );
 }
 

@@ -35,31 +35,38 @@ const NAMED_ENTITIES: Record<string, string> = {
 };
 
 export function decodeEntities(input: string): string {
-  return input.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]*);/g, (match, code: string) => {
-    if (code[0] === '#') {
-      const isHex = code[1] === 'x' || code[1] === 'X';
-      const cp = isHex ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
-      if (!Number.isFinite(cp) || cp < 0 || cp > 0x10ffff) return match;
-      try {
-        return String.fromCodePoint(cp);
-      } catch {
-        return match;
+  return input.replace(
+    /&(#[xX][0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]*);/g,
+    (match, code: string) => {
+      if (code[0] === '#') {
+        const isHex = code[1] === 'x' || code[1] === 'X';
+        const cp = isHex ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+        if (!Number.isFinite(cp) || cp < 0 || cp > 0x10ffff) return match;
+        try {
+          return String.fromCodePoint(cp);
+        } catch {
+          return match;
+        }
       }
-    }
-    return NAMED_ENTITIES[code.toLowerCase()] ?? match;
-  });
+      return NAMED_ENTITIES[code.toLowerCase()] ?? match;
+    },
+  );
 }
 
 // fast-xml-parser yields a string for plain elements and { '#text', '@_attr' }
-// for elements with attributes; normalise both to decoded text.
-function getTextContent(field: unknown): string {
-  let content = '';
-  if (typeof field === 'string') content = field;
-  else if (typeof field === 'object' && field !== null) {
+// for elements with attributes; normalise both to raw text.
+function getRawText(field: unknown): string {
+  if (typeof field === 'string') return field;
+  if (typeof field === 'object' && field !== null) {
     const text = (field as Record<string, unknown>)['#text'];
-    if (typeof text === 'string') content = text;
-    else if (typeof text === 'number') content = String(text);
+    if (typeof text === 'string') return text;
+    if (typeof text === 'number') return String(text);
   }
+  return '';
+}
+
+function getTextContent(field: unknown): string {
+  const content = getRawText(field);
   return content ? decodeEntities(content) : '';
 }
 
@@ -92,8 +99,10 @@ export function parseSubstackFeed(xml: string): SubstackFeed {
       string,
       unknown
     >;
-    const fullContent = getTextContent(item['content:encoded']) || getTextContent(item.description);
-    const textContent = fullContent.replace(/<[^>]*>/g, '').trim();
+    // Strip tags before decoding, so an escaped &lt; in the post text isn't
+    // turned into a "<" that the tag stripper then swallows.
+    const fullContent = getRawText(item['content:encoded']) || getRawText(item.description);
+    const textContent = decodeEntities(fullContent.replace(/<[^>]*>/g, '')).trim();
     const contentSnippet =
       textContent.length > SNIPPET_CHARS
         ? `${textContent.substring(0, SNIPPET_CHARS)}...`
