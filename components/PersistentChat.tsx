@@ -1,49 +1,84 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useChat } from '../context/ChatContext';
 import ChatPanel from './ChatPanel';
 import EveAvatar from './EveAvatar';
 
+const NOTIFICATION_SHOWN_KEY = 'eve_notification_shown_v2';
+
+// sessionStorage can throw in private/locked-down browsers; the nudge is
+// cosmetic, so treat any failure as "already shown".
+function hasShownNotification(): boolean {
+  try {
+    return sessionStorage.getItem(NOTIFICATION_SHOWN_KEY) !== null;
+  } catch {
+    return true;
+  }
+}
+
+function markNotificationShown() {
+  try {
+    sessionStorage.setItem(NOTIFICATION_SHOWN_KEY, 'true');
+  } catch {
+    // Ignore.
+  }
+}
+
 export default function PersistentChat() {
-  const {
-    isOpen,
-    toggleChat,
-    isNotificationActive,
-    setNotificationActive,
-    setLastNotificationTime,
-  } = useChat();
+  const { isOpen, toggleChat, closeChat } = useChat();
   const [showNotification, setShowNotification] = useState(false);
-  const [_isHovered, setIsHovered] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    // Check if we've shown the notification in this session
-    const hasShown = sessionStorage.getItem('eve_notification_shown_v2');
-    if (!hasShown && !isOpen) {
-      // Delay slightly for effect (reduced to 1s)
-      const timer = setTimeout(() => {
-        setShowNotification(true);
-        setNotificationActive(true);
-        setLastNotificationTime(Date.now());
-        sessionStorage.setItem('eve_notification_shown_v2', 'true');
+    if (hasShownNotification() || isOpen) return;
 
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-          setShowNotification(false);
-          setNotificationActive(false);
-        }, 5000);
-      }, 1000);
+    // Delay slightly for effect (reduced to 1s)
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
+    const timer = setTimeout(() => {
+      setShowNotification(true);
+      markNotificationShown();
 
-      return () => clearTimeout(timer);
+      // Auto-hide after 5 seconds
+      hideTimer = setTimeout(() => setShowNotification(false), 5000);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [isOpen]);
+
+  // When the panel closes, put focus back on the control that opens it (WCAG
+  // 2.4.3) instead of letting the browser drop it on <body>. ChatPanel handles
+  // the other direction by focusing its input on mount.
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) {
+      toggleRef.current?.focus({ preventScroll: true });
     }
-  }, [isOpen, setNotificationActive, setLastNotificationTime]);
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  const handlePanelKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeChat();
+    }
+  };
 
   return (
     <div className="fixed bottom-6 right-[15px] z-100 flex flex-col items-end">
       <AnimatePresence>
         {isOpen && (
+          // Non-modal dialog: the page stays usable behind it, so no aria-modal
+          // and no focus trap. A native <dialog> needs `open` plus UA styling
+          // that fights the animated panel, hence the role on a div.
           <motion.div
+            role="dialog"
+            aria-labelledby="eve-chat-title"
+            onKeyDown={handlePanelKeyDown}
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -55,17 +90,20 @@ export default function PersistentChat() {
               <div className="flex items-center gap-3">
                 <EveAvatar width={72} height={40} className="border border-mauve/50" />
                 <div>
-                  <h3 className="font-heading text-white text-sm tracking-wide">EVE</h3>
+                  <h3 id="eve-chat-title" className="font-heading text-white text-sm tracking-wide">
+                    EVE
+                  </h3>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     <span className="text-[10px] text-white/60 uppercase tracking-wider">
-                      Online · Air-gapped
+                      Online · Site-only
                     </span>
                   </div>
                 </div>
               </div>
               <button
-                onClick={toggleChat}
+                type="button"
+                onClick={closeChat}
                 className="text-white/50 hover:text-white transition-colors p-1"
                 aria-label="Close chat"
               >
@@ -79,6 +117,7 @@ export default function PersistentChat() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -121,18 +160,15 @@ export default function PersistentChat() {
       </AnimatePresence>
 
       {/* Toggle Button Container */}
-      <div
-        className="relative flex items-center"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <div className="relative flex items-center">
         <AnimatePresence>
-          {!isOpen && !showNotification && !isNotificationActive && (
+          {!isOpen && !showNotification && (
             <motion.div
               initial={{ opacity: 0, y: 10, x: '-50%' }}
               animate={{ opacity: 1, y: 0, x: '-50%' }}
               exit={{ opacity: 0, y: 10, x: '-50%' }}
               className="absolute bottom-full mb-1.5 left-1/2 px-3 py-1.5 bg-black/80 rounded-xl text-white text-xs font-medium whitespace-nowrap"
+              aria-hidden="true"
             >
               EVE AI
             </motion.div>
@@ -140,12 +176,15 @@ export default function PersistentChat() {
         </AnimatePresence>
 
         <motion.button
+          ref={toggleRef}
+          type="button"
           onClick={toggleChat}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className="bg-transparent border-none p-0 cursor-pointer outline-hidden"
+          className="bg-transparent border-none p-0 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-mauve rounded-lg"
           style={{ background: 'none', border: 'none' }}
           aria-label={isOpen ? 'Close EVE AI chat' : 'Open EVE AI chat assistant'}
+          aria-expanded={isOpen}
         >
           {isOpen ? (
             <div className="w-20 h-12 rounded-lg bg-black/80 border-2 border-mauve/50 flex items-center justify-center text-mauve">
@@ -159,6 +198,7 @@ export default function PersistentChat() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>

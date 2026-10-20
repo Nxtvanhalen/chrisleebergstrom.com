@@ -1,51 +1,37 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import type { EveContext } from '../lib/eve-validation';
 
 interface ChatContextType {
   isOpen: boolean;
   openChat: () => void;
   closeChat: () => void;
   toggleChat: () => void;
-  currentContext: string;
-  setContext: (context: string) => void;
-  isNotificationActive: boolean;
-  setNotificationActive: (active: boolean) => void;
-  lastNotificationTime: number;
-  setLastNotificationTime: (time: number) => void;
+  // Which part of the site the visitor is on; sent with each message so EVE can
+  // tailor replies. Only allowlisted names (see lib/eve-validation) are accepted.
+  currentContext: EveContext;
+  setContext: (context: EveContext) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentContext, setCurrentContext] = useState('Home');
-  const [isNotificationActive, setNotificationActive] = useState(false);
-  const [lastNotificationTime, setLastNotificationTime] = useState(0);
+  const [currentContext, setContext] = useState<EveContext>('Home');
 
-  const openChat = () => setIsOpen(true);
-  const closeChat = () => setIsOpen(false);
-  const toggleChat = () => setIsOpen((prev) => !prev);
-  const setContext = (context: string) => setCurrentContext(context);
+  // Stable callbacks + memoised value so consumers that list them as effect
+  // dependencies (ProjectsClient, PersistentChat) don't re-run every render.
+  const openChat = useCallback(() => setIsOpen(true), []);
+  const closeChat = useCallback(() => setIsOpen(false), []);
+  const toggleChat = useCallback(() => setIsOpen((prev) => !prev), []);
 
-  return (
-    <ChatContext.Provider
-      value={{
-        isOpen,
-        openChat,
-        closeChat,
-        toggleChat,
-        currentContext,
-        setContext,
-        isNotificationActive,
-        setNotificationActive,
-        lastNotificationTime,
-        setLastNotificationTime,
-      }}
-    >
-      {children}
-    </ChatContext.Provider>
+  const value = useMemo<ChatContextType>(
+    () => ({ isOpen, openChat, closeChat, toggleChat, currentContext, setContext }),
+    [isOpen, openChat, closeChat, toggleChat, currentContext],
   );
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
 
 export function useChat() {

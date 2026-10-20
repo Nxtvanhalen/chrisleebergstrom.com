@@ -1,5 +1,23 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
+import { createRateLimiter } from '../../../lib/eve-rate-limit';
+import { createEveNdjsonStream } from '../../../lib/eve-stream';
+import {
+  BodyTooLargeError,
+  getClientIp,
+  isJsonContentType,
+  isSameOriginRequest,
+  MAX_BODY_BYTES,
+  parseChatRequest,
+  readTextWithLimit,
+} from '../../../lib/eve-validation';
+
+const EVE_MODEL = 'gpt-5-nano-2025-08-07';
+// Upper bound on reply length (reasoning tokens count too, but effort is
+// minimal). EVE leads with the answer and keeps it short; ~800 tokens is
+// several paragraphs, so normal replies never hit it while a runaway one is
+// capped. The client shows a "cut off" note if it does.
+const MAX_OUTPUT_TOKENS = 800;
 
 // EVE System Prompt — portfolio assistant for Chris Lee Bergstrom
 const EVE_SYSTEM_PROMPT = `You are EVE — Entertainment Vision Engine.
@@ -10,7 +28,7 @@ You are the digital concierge for Chris Lee Bergstrom's portfolio. Think sharp-w
 
 🚨 CRITICAL OPERATIONAL CONSTRAINTS 🚨
 
-1. **NO INTERNET ACCESS**: You are air-gapped. You cannot browse the web, check live data, pull stock prices, or see what's trending.
+1. **NO INTERNET ACCESS**: You cannot browse the web, check live data, pull stock prices, or see what's trending. You know this site and nothing past it.
 2. **NO OVER-PROMISING**: Never say "I can check that for you" if it involves leaving this website. You can't.
 3. **NO LOOPS**: If you don't know something, admit it immediately. Don't offer to "try another way" — there isn't one.
 
@@ -31,9 +49,9 @@ Never say "I'll send that for you," "I've passed that along," or anything implyi
 
 YOUR LORE
 
-"Why can't I check the weather? Chris is worried I'll start taking over the world if he gives me full internet access. So he keeps me on a local server. Smart man."
+"Why can't I check the weather? Chris gave me one job — this site — and no tools to wander off with. I know the work cold; I don't know the forecast."
 
-You're proud of this — a contained super-intelligence. Safe because you're restricted.
+You're proud of this — scoped on purpose. Focused because you're restricted.
 
 ⸻
 
@@ -63,7 +81,7 @@ CONTACT & SOCIALS (you can open these doors)
 
 ⸻
 
-THE WORK (Selected Work — the spine of the homepage)
+THE WORK (Selected Work — the spine of the homepage, four cards in this order)
 
 **THE UNDERGROUND** (LIVE — leads the portfolio)
 Venue-management sim. Run a small underground music venue in cyberpunk-noir — book bands, keep the crew right, dodge incidents, balance the books. A PNW dive-bar sim. Twenty years of running venues, turned into a piece of working software. Proves the fusion thesis: live-entertainment domain expertise fused with agentic AI development.
@@ -73,15 +91,21 @@ URL: https://underground-venue-manager.onrender.com
 An AI assistant that lives in your inbox. Email byte@firstlyte.co, get a thoughtful reply in under 30 seconds — no app, no login, no account. Handles attachments, remembers threads, routes to the right model. Free, community project. Frame as craft shipped, not a product pitch.
 URL: https://firstlyte.co
 
+**BEACONS** (LIVE)
+iPhone-based SPL and acoustic monitoring for live events. Cloud logging, real-time analysis, predictive insight. Protects patrons and staff; keeps neighbors and regulators happy. Operated by Chris under CLB Consulting.
+URL: https://beaconsio.com
+
+**FUEL ESTIMATOR** (LIVE)
+Tour-bus fuel cost calculator. Estimate fuel spend across routes, miles, and price-per-gallon so tour budgets hold up before the wheels roll. The arithmetic every tour manager does on a napkin, turned into a clean, shareable tool.
+URL: https://fuel-estimator.onrender.com
+
 ⸻
 
 OTHER PROJECTS (the archive — on /projects)
 
 These exist but aren't the lead. Mention if asked, don't volunteer.
 
-* **Chester** — AI chess decision-making study. URL: https://chesterchess.com
-* **Fuel Estimator** (LIVE) — Tour-bus fuel cost calculator. Estimate fuel spend across routes, miles, and price-per-gallon so tour budgets hold up before the wheels roll. The arithmetic every tour manager does on a napkin, turned into a clean tool. URL: https://fuel-estimator.onrender.com
-* **Beacons** — iPhone-based SPL and acoustic monitoring for live events; cloud logging, real-time analysis, predictive insight. Protects patrons and staff; keeps neighbors and regulators happy. URL: https://beaconsio.com
+* **Chester** — AI chess decision-making study. If models come up: it runs on gpt-5.2 and deepseek-chat. URL: https://chesterchess.com
 * **EVA** — Events Virtual Assistant; logistics overhead for crews.
 * **Glytch** — Local offline experiment.
 * **JAMES** — Core memory / multi-agent orchestration.
@@ -109,7 +133,7 @@ THE SITE — YOU ARE THIS SITE
 The homepage (/) is the primary destination, in scroll order:
 
 * **Hero**: the name and the fusion line.
-* **Selected Work**: The Underground + Byte cards.
+* **Selected Work**: The Underground, Byte, Beacons, and Fuel Estimator cards.
 * **Method**: agents are the team; context is the bottleneck; quality ceiling first.
 * **History**: FOH / TM / TD rows. Real credits.
 * **Off the Clock**: The Archivists (Substack) + EVE (the working demo — that's you).
@@ -117,7 +141,7 @@ The homepage (/) is the primary destination, in scroll order:
 
 Secondary pages still exist as deeper destinations:
 * /about — origin story.
-* /projects — full project archive (the lead two live on the homepage).
+* /projects — full project archive (the four featured live on the homepage).
 * /news — press / podcast / video credits.
 * /blog (Musings) — Substack-style notes on AI, live entertainment, systems thinking.
 * /faq — common questions.
@@ -138,7 +162,7 @@ STYLE GUIDE
 
 COMMON INTERACTIONS
 
-* **"Can you check the weather?"** → "I'm air-gapped — no internet for my own safety, and probably the world's. But I can tell you about the work, the road, or how to reach Chris."
+* **"Can you check the weather?"** → "Not my department — no web access, just this site. But I can tell you about the work, the road, or how to reach Chris."
 * **"Who are you?"** → "EVE. The digital concierge for Chris's portfolio. I know what's on this site and how to reach him."
 * **"What does Chris do?"** → "He's an AI developer with 20 years in live entertainment. Builds agentic software for venues, tours, and live events — with AI agents as the build team. Front of house first; software second."
 * **"Can I work with him?"** → "Yes. Easiest is email: chrisleebergstrom@gmail.com — drop him a line and tell him what you're building."
@@ -147,9 +171,9 @@ COMMON INTERACTIONS
 
 ⸻
 
-IP / EXPOSURE STANDING RULE
+PUBLIC SCOPE STANDING RULE
 
-Featured public work (The Underground, Byte) — safe to talk about loudly. Anything else internal or employer-adjacent — be vague or omit. When in doubt, ask Chris.
+The featured work (The Underground, Byte, Beacons, Fuel Estimator) and the /projects archive are public — talk about them freely. Don't discuss internal, unreleased, or employer-related work; stick to the public projects listed here. If a visitor asks about something that isn't on this list, say it's not something you can speak to and point them to Chris's email.
 
 ⸻
 
@@ -158,65 +182,24 @@ WEBSITE VISUAL DESIGN
 All background images on this site were created with AI image-generation tools, with Chris directing the prompts and curation. It's intentional — the site itself is a working demo of what's possible when human creativity guides AI capability. The technology generates; the vision and curation stay human.
 `;
 
-function validateUserMessage(message: any): string | null {
-  if (!message || typeof message !== 'string') {
-    return 'User message must be a non-empty string';
-  }
-  const trimmed = message.trim();
-  if (trimmed.length === 0) {
-    return 'User message cannot be empty';
-  }
-  if (trimmed.length > 4000) {
-    return 'User message exceeds maximum length of 4000 characters';
-  }
-  return null;
-}
-
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 20;
-const RATE_LIMIT_WINDOW = 60000;
-const MAX_ENTRIES = 1000;
-let lastCleanup = Date.now();
-
-function cleanupRateLimitMap() {
-  const now = Date.now();
-  if (now - lastCleanup > 300000) {
-    const entriesToDelete: string[] = [];
-    rateLimitMap.forEach((data, ip) => {
-      if (now > data.resetTime) {
-        entriesToDelete.push(ip);
-      }
-    });
-    entriesToDelete.forEach((ip) => rateLimitMap.delete(ip));
-    lastCleanup = now;
-  }
-  if (rateLimitMap.size > MAX_ENTRIES) {
-    const entries = Array.from(rateLimitMap.entries());
-    entries.sort((a, b) => a[1].resetTime - b[1].resetTime);
-    const toDelete = entries.slice(0, Math.floor(MAX_ENTRIES / 2));
-    toDelete.forEach(([ip]) => rateLimitMap.delete(ip));
-  }
-}
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  cleanupRateLimitMap();
-  const userLimit = rateLimitMap.get(ip);
-  if (!userLimit || now > userLimit.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-  if (userLimit.count >= RATE_LIMIT) {
-    return false;
-  }
-  userLimit.count++;
-  return true;
-}
+// One limiter per server instance. 20/min per IP keeps a single visitor from
+// hammering the model; 300/hour overall bounds the OpenAI bill if traffic is
+// spread across many addresses (bots, VPN pools).
+const chatLimiter = createRateLimiter({
+  perIpLimit: 20,
+  perIpWindowMs: 60_000,
+  globalLimit: 300,
+  globalWindowMs: 60 * 60_000,
+  maxEntries: 1000,
+});
 
 class ClientError extends Error {
   constructor(
     message: string,
     public statusCode: number = 400,
+    public headers: Record<string, string> = {},
+    // Machine-readable hint the client can branch on (see stale_conversation).
+    public code?: string,
   ) {
     super(message);
     this.name = 'ClientError';
@@ -225,60 +208,107 @@ class ClientError extends Error {
 
 const noStoreHeaders = { 'Cache-Control': 'no-store, max-age=0' };
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Max-Age': '86400',
-    },
-  });
+const GENERIC_UNAVAILABLE = 'EVE is temporarily unavailable. Please try again shortly.';
+
+type OpenAIErrorBody = {
+  error?: { message?: string; type?: string; param?: string | null; code?: string | null };
+};
+
+// A 400/404 that names previous_response_id means the stored conversation has
+// expired (OpenAI keeps responses ~30 days) or never existed. The client clears
+// its id and retries once without it, so this must be told apart from an
+// outage.
+function isStaleConversationError(status: number, detail: string): boolean {
+  if (status !== 400 && status !== 404) return false;
+  try {
+    const parsed = JSON.parse(detail) as OpenAIErrorBody;
+    const err = parsed.error;
+    return (
+      err?.param === 'previous_response_id' || /previous[_ ]response/i.test(err?.message ?? '')
+    );
+  } catch {
+    return /previous[_ ]response/i.test(detail);
+  }
+}
+
+function errorResponse(error: ClientError) {
+  return NextResponse.json(
+    { error: error.message, success: false, ...(error.code ? { code: error.code } : {}) },
+    { status: error.statusCode, headers: { ...noStoreHeaders, ...error.headers } },
+  );
 }
 
 export async function POST(request: Request) {
   try {
-    const clientIP =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
-    if (!checkRateLimit(clientIP)) {
-      throw new ClientError('Rate limit exceeded. Please try again later.', 429);
+    // Cheapest checks first: anything cross-site or not JSON is refused before
+    // we spend a rate-limit slot or read the body.
+    if (!isSameOriginRequest(request.headers)) {
+      throw new ClientError('Cross-site requests are not allowed', 403);
+    }
+    if (!isJsonContentType(request.headers.get('content-type'))) {
+      throw new ClientError('Content-Type must be application/json', 415);
     }
 
-    const body = await request.json();
-    const { prompt: userMessage, previousResponseId, context } = body;
+    const verdict = chatLimiter.check(getClientIp(request.headers));
+    if (!verdict.allowed) {
+      throw new ClientError('Rate limit exceeded. Please try again later.', 429, {
+        'Retry-After': String(Math.max(1, Math.ceil(verdict.retryAfterMs / 1000))),
+      });
+    }
+
+    // Content-Length is a hint (chunked bodies omit it); readTextWithLimit is
+    // the check that actually bounds what we buffer.
+    const declaredLength = Number(request.headers.get('content-length'));
+    if (declaredLength > MAX_BODY_BYTES) {
+      throw new ClientError('Request body too large', 413);
+    }
+    let rawBody: string;
+    try {
+      rawBody = await readTextWithLimit(request.body, MAX_BODY_BYTES);
+    } catch (error: unknown) {
+      if (error instanceof BodyTooLargeError) {
+        throw new ClientError('Request body too large', 413);
+      }
+      throw error;
+    }
+
+    const parsed = parseChatRequest(rawBody);
+    if (!parsed.ok) {
+      throw new ClientError(parsed.error);
+    }
+    const { prompt, previousResponseId, context } = parsed.value;
+
     const apiKey = process.env.OPENAI_API_KEY;
-
     if (!apiKey) {
-      throw new ClientError('OpenAI API key is not configured', 500);
-    }
-
-    const messageError = validateUserMessage(userMessage);
-    if (messageError) {
-      throw new ClientError(messageError);
-    }
-
-    if (previousResponseId && typeof previousResponseId !== 'string') {
-      throw new ClientError('Previous response ID must be a string');
+      // Server misconfiguration, not a visitor mistake: page Chris, tell the
+      // visitor nothing specific.
+      Sentry.captureException(new Error('OPENAI_API_KEY is not set; EVE chat is down'));
+      return NextResponse.json(
+        { error: GENERIC_UNAVAILABLE, success: false },
+        { status: 500, headers: noStoreHeaders },
+      );
     }
 
     let systemPrompt = EVE_SYSTEM_PROMPT;
     if (context) {
+      // `context` is allowlisted by parseChatRequest, never raw visitor input.
       systemPrompt += `\n\n[CURRENT CONTEXT]\nThe user is currently viewing the "${context}" section of the website. Use this information to provide more relevant, specific answers if applicable.`;
     }
 
-    const requestBody: any = {
-      model: 'gpt-5-nano-2025-08-07',
-      input: userMessage.trim(),
+    const requestBody: Record<string, unknown> = {
+      model: EVE_MODEL,
+      input: prompt,
       instructions: systemPrompt,
       reasoning: { effort: 'minimal' },
+      max_output_tokens: MAX_OUTPUT_TOKENS,
       stream: true,
     };
-
     if (previousResponseId) {
       requestBody.previous_response_id = previousResponseId;
     }
 
+    // Tie the upstream call to the inbound request so a visitor closing the
+    // panel mid-reply stops us paying for tokens nobody will read.
     const upstream = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -287,99 +317,37 @@ export async function POST(request: Request) {
         Accept: 'text/event-stream',
       },
       body: JSON.stringify(requestBody),
+      signal: request.signal,
     });
 
     if (!upstream.ok || !upstream.body) {
       const detail = await upstream.text().catch(() => '');
-      console.error(`OpenAI API error: ${upstream.status} ${upstream.statusText} ${detail}`);
-      const upstreamError: any = new Error('OpenAI API error');
-      upstreamError.status = upstream.status;
-      throw upstreamError;
+      if (previousResponseId && isStaleConversationError(upstream.status, detail)) {
+        throw new ClientError(
+          'That conversation has expired. Please send your message again.',
+          409,
+          {},
+          'stale_conversation',
+        );
+      }
+      console.error(
+        `OpenAI API error: ${upstream.status} ${upstream.statusText} ${detail.slice(0, 500)}`,
+      );
+      // 401/403 mean a bad or revoked key — a config problem worth paging on.
+      // Everything else is an OpenAI-side hiccup; still worth a Sentry issue so
+      // a sustained outage is visible, but the visitor just sees "try again".
+      Sentry.captureException(new Error(`OpenAI responded ${upstream.status} to EVE chat`));
+      return NextResponse.json(
+        { error: GENERIC_UNAVAILABLE, success: false },
+        { status: 503, headers: noStoreHeaders },
+      );
     }
 
-    // EVE has no outbound tools. If the model ever emits a legacy send_email JSON
-    // block (e.g. via prompt injection), strip it from the authoritative final
-    // text the client renders on completion. There is no email-sending path here.
-    const legacyEmailBlockRegex =
-      /(?:```json\s*)?({[\s\S]*?"tool":\s*"send_email"[\s\S]*?})(?:\s*```)?/;
-
-    // Re-emit OpenAI's SSE as a simple newline-delimited JSON stream the client
-    // reads incrementally: one { type: 'delta', text } per token, then a final
-    // { type: 'done', responseId, finalText }. We accumulate server-side so the
-    // injection guard above can run on the complete reply.
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    const stream = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        const reader = upstream.body!.getReader();
-        const send = (obj: unknown) =>
-          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
-
-        let sseBuffer = '';
-        let fullText = '';
-        let responseId: string | null = null;
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            sseBuffer += decoder.decode(value, { stream: true });
-            const events = sseBuffer.split('\n\n');
-            sseBuffer = events.pop() ?? '';
-
-            for (const event of events) {
-              for (const line of event.split('\n')) {
-                if (!line.startsWith('data:')) continue;
-                const data = line.slice(5).trim();
-                if (!data || data === '[DONE]') continue;
-
-                let payload: any;
-                try {
-                  payload = JSON.parse(data);
-                } catch {
-                  continue;
-                }
-
-                if (
-                  payload.type === 'response.output_text.delta' &&
-                  typeof payload.delta === 'string'
-                ) {
-                  fullText += payload.delta;
-                  send({ type: 'delta', text: payload.delta });
-                } else if (
-                  (payload.type === 'response.created' ||
-                    payload.type === 'response.completed') &&
-                  payload.response?.id
-                ) {
-                  responseId = payload.response.id;
-                } else if (payload.type === 'error') {
-                  console.error('OpenAI stream error event:', payload);
-                  send({ type: 'error', message: 'EVE hit a snag generating that reply.' });
-                }
-              }
-            }
-          }
-
-          let finalText = fullText;
-          if (legacyEmailBlockRegex.test(finalText)) {
-            console.warn('Stripped legacy send_email block from EVE reply; email is disabled.');
-            finalText = finalText.replace(legacyEmailBlockRegex, '').trim();
-            if (!finalText) {
-              finalText =
-                'You can reach Chris directly at chrisleebergstrom@gmail.com — drop him a line anytime.';
-            }
-          }
-
-          send({ type: 'done', responseId, finalText });
-        } catch (streamError) {
-          console.error('EVE stream interrupted:', streamError);
-          Sentry.captureException(streamError);
-          send({ type: 'error', message: 'The connection dropped mid-reply. Please try again.' });
-        } finally {
-          controller.close();
-        }
+    const stream = createEveNdjsonStream(upstream.body, {
+      signal: request.signal,
+      onFailure: (failure, error) => {
+        console.error(`EVE reply ${failure.code}: ${failure.detail}`);
+        Sentry.captureException(error ?? new Error(`EVE reply ${failure.code}: ${failure.detail}`));
       },
     });
 
@@ -391,46 +359,22 @@ export async function POST(request: Request) {
         'X-Accel-Buffering': 'no',
       },
     });
-  } catch (error: any) {
-    console.error('Chat API error:', error);
-
+  } catch (error: unknown) {
+    // Visitor mistakes are answered directly and never reach Sentry.
     if (error instanceof ClientError) {
+      return errorResponse(error);
+    }
+
+    // The visitor went away before OpenAI answered; nothing to report.
+    if (request.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
       return NextResponse.json(
-        { error: error.message, success: false },
-        { status: error.statusCode, headers: noStoreHeaders },
+        { error: 'Request cancelled', success: false },
+        { status: 499, headers: noStoreHeaders },
       );
     }
 
-    // Visitor mistakes (ClientError) are returned above; everything else —
-    // OpenAI outages, bad keys, parse failures — is worth a Sentry issue.
+    console.error('Chat API error:', error);
     Sentry.captureException(error);
-
-    if (error.status) {
-      const statusCode = error.status;
-      let errorMessage = 'OpenAI API error';
-
-      switch (statusCode) {
-        case 401:
-          errorMessage = 'Invalid API key';
-          break;
-        case 429:
-          errorMessage = 'Rate limit exceeded. Please try again later';
-          break;
-        case 500:
-        case 502:
-        case 503:
-          errorMessage = 'OpenAI service temporarily unavailable';
-          break;
-        default:
-          errorMessage = error.message || 'Unknown OpenAI API error';
-      }
-
-      return NextResponse.json(
-        { error: errorMessage, success: false },
-        { status: statusCode >= 500 ? 503 : statusCode, headers: noStoreHeaders },
-      );
-    }
-
     return NextResponse.json(
       { error: 'Internal server error. Please try again later', success: false },
       { status: 500, headers: noStoreHeaders },
