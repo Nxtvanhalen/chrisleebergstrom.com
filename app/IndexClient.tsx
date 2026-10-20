@@ -28,9 +28,7 @@ function useCircuitNetwork(canvasRef: React.RefObject<HTMLCanvasElement | null>)
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const isTouch =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(hover: none)').matches;
+    const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
 
     let width = 0;
     let height = 0;
@@ -192,7 +190,11 @@ function useCircuitNetwork(canvasRef: React.RefObject<HTMLCanvasElement | null>)
   }, [canvasRef, reducedMotion]);
 }
 
-function useKineticName(nameRef: React.RefObject<HTMLHeadingElement | null>) {
+// Pointer-driven 3D tilt on the name. Writes to an inner wrapper (not the
+// motion.h1, whose transform motion owns for the entrance `y` tween), and the
+// RAF loop only runs while easing toward a new target — it stops once settled
+// and restarts on the next pointer move.
+function useKineticName(nameRef: React.RefObject<HTMLElement | null>) {
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -200,16 +202,36 @@ function useKineticName(nameRef: React.RefObject<HTMLHeadingElement | null>) {
     const el = nameRef.current;
     if (!el) return;
 
-    const isTouch =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(hover: none)').matches;
+    const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
     if (isTouch) return;
 
     let rafId = 0;
+    let running = false;
     let targetTiltX = 0;
     let targetTiltY = 0;
     let tiltX = 0;
     let tiltY = 0;
+
+    const apply = () => {
+      el.style.transform = `perspective(900px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+      el.style.textShadow = `${(tiltY * 1.5).toFixed(1)}px ${(-tiltX * 1.2).toFixed(1)}px 24px rgba(147, 112, 219, 0.45)`;
+    };
+
+    const tick = () => {
+      // Ease toward target so the motion doesn't feel jittery.
+      tiltX += (targetTiltX - tiltX) * 0.08;
+      tiltY += (targetTiltY - tiltY) * 0.08;
+      // Settled: snap to target, write once more, and stop scheduling frames.
+      if (Math.abs(targetTiltX - tiltX) < 0.01 && Math.abs(targetTiltY - tiltY) < 0.01) {
+        tiltX = targetTiltX;
+        tiltY = targetTiltY;
+        apply();
+        running = false;
+        return;
+      }
+      apply();
+      rafId = requestAnimationFrame(tick);
+    };
 
     const handleMouse = (e: MouseEvent) => {
       // Map cursor to a small tilt range (-4° to +4°).
@@ -217,39 +239,38 @@ function useKineticName(nameRef: React.RefObject<HTMLHeadingElement | null>) {
       const cy = window.innerHeight / 2;
       targetTiltY = ((e.clientX - cx) / cx) * 4;
       targetTiltX = ((cy - e.clientY) / cy) * 2;
-    };
-
-    const tick = () => {
-      // Ease toward target so the motion doesn't feel jittery.
-      tiltX += (targetTiltX - tiltX) * 0.08;
-      tiltY += (targetTiltY - tiltY) * 0.08;
-      el.style.transform = `perspective(900px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
-      el.style.textShadow = `${(tiltY * 1.5).toFixed(1)}px ${(-tiltX * 1.2).toFixed(1)}px 24px rgba(147, 112, 219, 0.45)`;
-      rafId = requestAnimationFrame(tick);
+      if (!running) {
+        running = true;
+        rafId = requestAnimationFrame(tick);
+      }
     };
 
     window.addEventListener('mousemove', handleMouse);
-    tick();
 
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', handleMouse);
+      el.style.transform = '';
+      el.style.textShadow = '';
     };
   }, [nameRef, reducedMotion]);
 }
 
 export default function IndexClient() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const nameRef = useRef<HTMLHeadingElement>(null);
+  const nameRef = useRef<HTMLSpanElement>(null);
 
   useCircuitNetwork(canvasRef);
   useKineticName(nameRef);
 
   return (
     <div className="text-white">
-      {/* Mouse + touch reactive circuit network — fixed behind every section */}
+      {/* Mouse + touch reactive circuit network — fixed behind every section.
+          Purely decorative, so hidden from assistive tech. */}
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
+        tabIndex={-1}
         className="fixed inset-0 w-full h-full pointer-events-none"
         style={{ zIndex: 0 }}
       />
@@ -265,66 +286,69 @@ export default function IndexClient() {
         }}
       />
 
-      <div className="relative" style={{ zIndex: 10 }}>
-        <section className="relative min-h-screen">
-        <main
-          id="main-content"
+      {/* One <main> for the whole page, like every other route, so the skip
+          link and landmark navigation reach every section — not just the hero. */}
+      <main id="main-content" className="relative" style={{ zIndex: 10 }}>
+        <section
+          aria-labelledby="hero-heading"
           className="relative min-h-screen flex flex-col items-center justify-center px-6 py-24"
-          aria-label="Chris Lee Bergstrom — Hero"
         >
-        <motion.h1
-          ref={nameRef}
-          data-speakable="true"
-          className="font-heading text-5xl md:text-7xl lg:text-8xl text-center leading-[0.95] tracking-tight uppercase will-change-transform"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.35 }}
-        >
-          <span className="block text-white">Chris Lee</span>
-          <span className="block" style={{ color: VIOLET }}>
-            Bergstrom
-          </span>
-        </motion.h1>
+          <motion.h1
+            id="hero-heading"
+            data-speakable="true"
+            className="font-heading text-5xl md:text-7xl lg:text-8xl text-center leading-[0.95] tracking-tight uppercase"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.35 }}
+          >
+            {/* Inner wrapper takes the pointer tilt (useKineticName) so it never
+                fights motion's own transform on the h1. */}
+            <span ref={nameRef} className="block will-change-transform">
+              <span className="block text-white">Chris Lee</span>
+              <span className="block" style={{ color: VIOLET }}>
+                Bergstrom
+              </span>
+            </span>
+          </motion.h1>
 
-        <motion.p
-          data-speakable="true"
-          className="font-body text-base md:text-lg lg:text-xl text-center max-w-2xl mt-10 leading-relaxed"
-          style={{ color: 'rgba(245, 245, 220, 0.92)' }}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.65 }}
-        >
-          I spent 20 years building live shows. Now I build the software that runs them — and a
-          few other things along the way.
-        </motion.p>
+          <motion.p
+            data-speakable="true"
+            className="font-body text-base md:text-lg lg:text-xl text-center max-w-2xl mt-10 leading-relaxed"
+            style={{ color: 'rgba(245, 245, 220, 0.92)' }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.65 }}
+          >
+            I spent 20 years building live shows. Now I build the software that runs them — and a
+            few other things along the way.
+          </motion.p>
 
-        <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.55 }}
-          transition={{ duration: 0.8, delay: 1.4 }}
-          aria-hidden="true"
-        >
-          <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/60">
-            Scroll
-          </span>
-          <motion.span
-            className="block w-px h-8 bg-white/40"
-            animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.3, 0.9, 0.3] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ transformOrigin: 'top' }}
-          />
-        </motion.div>
-        </main>
-      </section>
+          <motion.div
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.55 }}
+            transition={{ duration: 0.8, delay: 1.4 }}
+            aria-hidden="true"
+          >
+            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/60">
+              Scroll
+            </span>
+            <motion.span
+              className="block w-px h-8 bg-white/40"
+              animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.3, 0.9, 0.3] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ transformOrigin: 'top' }}
+            />
+          </motion.div>
+        </section>
 
-      <SelectedWork />
-      <Method />
-      <Skills />
-      <History />
-      <OffTheClock />
-      <Contact />
-      </div>
+        <SelectedWork />
+        <Method />
+        <Skills />
+        <History />
+        <OffTheClock />
+        <Contact />
+      </main>
     </div>
   );
 }

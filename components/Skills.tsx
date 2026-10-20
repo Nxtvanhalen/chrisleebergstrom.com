@@ -81,7 +81,7 @@ export default function Skills() {
           <SkillRow
             code="ENG"
             label="Engineering"
-            detail="Frontend (React, Next.js, TypeScript, Tailwind, Canvas/WebGL). Backend (Supabase + Postgres with RLS, Node/Bun, tRPC/REST/GraphQL, Python, Rust/Go). Edge performance (Cloudflare Workers, multi-region, offline-first). Security (OAuth, OWASP, bot defense). Infrastructure on Render and Cloudflare. CI/CD with a robust test suite."
+            detail="Frontend (React, Next.js, TypeScript, Tailwind, Canvas/WebGL). Backend (Supabase + Postgres with RLS, Node/Bun, tRPC/REST/GraphQL, Python, Rust/Go). Edge performance (Cloudflare Workers, multi-region, offline-first). Security (OAuth, OWASP, bot defense). Infrastructure on Render and Cloudflare. CI/CD with Biome, type checks and automated tests."
             delay={0.05}
           />
           <SkillRow

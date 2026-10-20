@@ -1,8 +1,9 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import IndexClient from './IndexClient';
+import { OG_IMAGES } from './og-image';
 
 export const metadata: Metadata = {
   title: {
@@ -38,15 +39,9 @@ export const metadata: Metadata = {
       'AI developer with 20 years in live entertainment. Building agentic software for venues, tours, and live events — front-of-house engineer turned full-stack developer.',
     type: 'website',
     url: 'https://chrisleebergstrom.com',
-    images: [
-      {
-        url: '/images/profile/chris-profile-square-2.jpg',
-        width: 1200,
-        height: 1200,
-        alt: 'Chris Lee Bergstrom — AI developer and live entertainment veteran',
-      },
-    ],
+    images: OG_IMAGES,
   },
+  // twitter.images is auto-filled from openGraph.images by Next.
   twitter: {
     card: 'summary_large_image',
     site: '@chrisleebergstrom',
@@ -54,14 +49,7 @@ export const metadata: Metadata = {
     title: 'Chris Lee Bergstrom — AI Developer + Live Entertainment',
     description:
       'AI developer with 20 years in live entertainment. Building agentic software for venues, tours, and live events.',
-    images: ['/images/profile/chris-profile-square-2.jpg'],
   },
-};
-
-export const viewport: Viewport = {
-  themeColor: '#9370DB',
-  width: 'device-width',
-  initialScale: 1,
 };
 
 const landingSchema = {
@@ -262,7 +250,8 @@ const landingSchema = {
       creator: { '@id': 'https://chrisleebergstrom.com/about#person' },
       author: { '@id': 'https://chrisleebergstrom.com/about#person' },
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      keywords: 'tour bus fuel calculator, tour budgeting, fuel cost estimator, touring, tour management',
+      keywords:
+        'tour bus fuel calculator, tour budgeting, fuel cost estimator, touring, tour management',
     },
     {
       '@type': 'WebPage',
@@ -288,7 +277,8 @@ const landingSchema = {
       '@id': 'https://chrisleebergstrom.com/#website',
       url: 'https://chrisleebergstrom.com',
       name: 'Chris Lee Bergstrom',
-      description: 'Personal portfolio of Chris Lee Bergstrom — AI developer with 20 years in live entertainment.',
+      description:
+        'Personal portfolio of Chris Lee Bergstrom — AI developer with 20 years in live entertainment.',
       publisher: {
         '@id': 'https://chrisleebergstrom.com/#organization',
       },

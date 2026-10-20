@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const VIOLET = '#9370DB';
 
@@ -42,11 +43,7 @@ function SectionHeading({ id, title, intro }: SectionHeadingProps) {
 
 export default function AboutClient() {
   return (
-    <main
-      id="main-content"
-      className="relative text-white"
-      aria-label="About Chris Lee Bergstrom"
-    >
+    <main id="main-content" className="relative text-white" aria-label="About Chris Lee Bergstrom">
       {/* Hero / Intro */}
       <section className="relative px-6 pt-32 pb-16 md:pt-40 md:pb-20 lg:pt-48 lg:pb-24">
         <div className="mx-auto max-w-4xl">
@@ -88,10 +85,10 @@ export default function AboutClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            A pattern-recognizing systems thinker spanning twenty-five domains, with expert depth
-            in seven. I operate an AI engineering team with multi-model role specialization,
-            adversarial review pipelines, and platform delegation. Fluent across the full
-            generative AI spectrum. I treat architecture and context engineering as source code.
+            A pattern-recognizing systems thinker spanning twenty-five domains, with expert depth in
+            seven. I operate an AI engineering team with multi-model role specialization,
+            adversarial review pipelines, and platform delegation. Fluent across the full generative
+            AI spectrum. I treat architecture and context engineering as source code.
           </motion.p>
 
           <motion.p
@@ -101,8 +98,8 @@ export default function AboutClient() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.35 }}
           >
-            Twenty-plus years in live entertainment — the domain expertise that makes every
-            product decision credible. Building with AI since the GPT-2/3 era. I lead with{' '}
+            Twenty-plus years in live entertainment — the domain expertise that makes every product
+            decision credible. Building with AI since the GPT-2/3 era. I lead with{' '}
             <span style={{ color: VIOLET }}>"what do you think?"</span> and learn by building.
           </motion.p>
         </div>
@@ -138,7 +135,6 @@ export default function AboutClient() {
             . The entire AI methodology is engineered to keep challenge matched to skill — agents
             handle tedium, the human stays at the architectural and creative layer.
           </motion.blockquote>
-
         </div>
       </section>
 
@@ -211,7 +207,7 @@ export default function AboutClient() {
                 →
               </span>
             </a>
-            <a
+            <Link
               href="/"
               className="inline-flex items-center justify-center px-8 py-4 font-heading text-sm tracking-[0.15em] uppercase rounded-xs border transition-all duration-300 hover:bg-white/5"
               style={{
@@ -220,7 +216,7 @@ export default function AboutClient() {
               }}
             >
               ← Back to the work
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

@@ -2,79 +2,57 @@
 
 import { useEffect } from 'react';
 
-declare global {
-  interface Window {
-    gtag?: (...args: any[]) => void;
-    // Plausible's global, injected by the script tag in layout.tsx. Optional
-    // because an ad-blocker may prevent the script from loading.
-    plausible?: (
-      event: string,
-      options?: { props?: Record<string, string | number | boolean> },
-    ) => void;
+// Pull the subject out of a mailto href, e.g.
+// "mailto:a@b.com?subject=Project%20Inquiry" → "Project Inquiry".
+function mailtoSubject(href: string): string | null {
+  const raw = href.match(/[?&]subject=([^&]*)/)?.[1];
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, ' '));
+  } catch {
+    return raw;
   }
 }
 
 export default function AnalyticsTracker() {
   useEffect(() => {
-    const emailClickHandlers = new WeakMap<Element, () => void>();
-    const ctaClickHandlers = new WeakMap<Element, () => void>();
+    // One delegated listener instead of per-link handlers plus a body-wide
+    // MutationObserver: links rendered later (client navigation, the menu
+    // drawer, AnimatePresence) are covered for free.
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      const link = target?.closest?.('a[href^="mailto:"]');
+      if (!link) return;
 
-    const trackEmailClicks = () => {
-      document.querySelectorAll('a[href^="mailto:"]').forEach((link) => {
-        if (emailClickHandlers.has(link)) return;
-        const handler = () => {
-          const href = link.getAttribute('href') || 'unknown';
-          if (typeof window.gtag !== 'undefined') {
-            window.gtag('event', 'email_click', {
-              event_category: 'engagement',
-              event_label: href,
-              value: 1,
-            });
-          }
-          // Mirror to Plausible (fires for consent-decliners too — cookieless).
-          window.plausible?.('Email Click', { props: { href } });
-        };
-        emailClickHandlers.set(link, handler);
-        link.addEventListener('click', handler);
-      });
+      const href = link.getAttribute('href') || 'unknown';
+      // Every CTA on the site is a mailto with a subject — that's the
+      // conversion signal; a bare mailto is plain engagement.
+      const subject = mailtoSubject(href);
+
+      // GA only exists once analytics consent has been granted (see
+      // CookieConsentLoader); after withdrawal its kill switch makes these no-ops.
+      if (typeof window.gtag !== 'undefined') {
+        window.gtag('event', 'email_click', {
+          event_category: 'engagement',
+          event_label: href,
+          value: 1,
+        });
+        if (subject) {
+          window.gtag('event', 'cta_click', {
+            event_category: 'conversion',
+            event_label: subject,
+            value: 1,
+          });
+        }
+      }
+
+      // Mirror to Plausible (fires for consent-decliners too — cookieless).
+      window.plausible?.('Email Click', { props: { href } });
+      if (subject) window.plausible?.('CTA Click', { props: { subject } });
     };
 
-    const trackCTAClicks = () => {
-      document.querySelectorAll('a[href*="subject=AI Project Inquiry"]').forEach((link) => {
-        if (ctaClickHandlers.has(link)) return;
-        const handler = () => {
-          const subject = decodeURIComponent(
-            link.getAttribute('href')?.match(/subject=([^&]*)/)?.[1] || 'unknown',
-          );
-          if (typeof window.gtag !== 'undefined') {
-            window.gtag('event', 'cta_click', {
-              event_category: 'conversion',
-              event_label: subject,
-              value: 1,
-            });
-          }
-          // Mirror to Plausible — this is your highest-intent event (project inquiry).
-          window.plausible?.('CTA Click', { props: { subject } });
-        };
-        ctaClickHandlers.set(link, handler);
-        link.addEventListener('click', handler);
-      });
-    };
-
-    trackEmailClicks();
-    trackCTAClicks();
-
-    const observer = new MutationObserver(() => {
-      trackEmailClicks();
-      trackCTAClicks();
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    return () => observer.disconnect();
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, []);
 
   return null;

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 const VIOLET = '#9370DB';
@@ -23,11 +24,19 @@ interface SubstackFeed {
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
+}
+
+// Substack's RSS gives RFC-822 pubDates ("Tue, 07 Oct 2025 14:00:00 GMT");
+// <time dateTime> wants ISO 8601, so convert and drop the attribute if unparseable.
+function toIsoDate(dateString: string): string | undefined {
+  const time = Date.parse(dateString);
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
 }
 
 type PostCardProps = {
@@ -54,10 +63,8 @@ function PostCard({ code, post, delay = 0 }: PostCardProps) {
       transition={{ duration: 0.6, delay }}
     >
       <div className="mb-3 flex items-center justify-between gap-4 text-[10px] font-mono uppercase tracking-[0.3em]">
-        <span className="text-white/55">
-          {code} · Musing
-        </span>
-        <time className="text-white/40" dateTime={post.pubDate}>
+        <span className="text-white/55">{code} · Musing</span>
+        <time className="text-white/40" dateTime={toIsoDate(post.pubDate)}>
           {formatDate(post.pubDate)}
         </time>
       </div>
@@ -309,9 +316,9 @@ export default function BlogClient() {
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <a href="/" className="transition-colors hover:text-white">
+            <Link href="/" className="transition-colors hover:text-white">
               ← Back to the work
-            </a>
+            </Link>
           </motion.p>
         </div>
       </section>

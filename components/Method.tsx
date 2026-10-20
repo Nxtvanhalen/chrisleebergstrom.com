@@ -83,7 +83,7 @@ export default function Method() {
             code="03"
             label="Verify"
             center="Adversarial gauntlet"
-            detail="Biome and the test suite as the quality floor. Codex reviews the same repo with instructions to be brutal — signs every report. Critique gets fed back to Claude: 'what do you think of this?' A third model breaks the echo chamber when needed."
+            detail="Biome, type checks and automated tests in CI as the quality floor. Codex reviews the same repo with instructions to be brutal — signs every report. Critique gets fed back to Claude: 'what do you think of this?' A third model breaks the echo chamber when needed."
             delay={0.1}
           />
           <Phase

@@ -129,7 +129,6 @@ export default function SelectedWork() {
                 src="/images/COVER.jpg"
                 alt="The Underground — cyberpunk-noir illustration of a neon-lit dive bar with crowd queued under rain, branded marquee, and venue facade"
                 fill
-                priority
                 className="object-cover"
                 sizes="(min-width: 1024px) 50vw, 100vw"
               />
@@ -211,7 +210,11 @@ export default function SelectedWork() {
             className="group inline-flex items-center gap-2 font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase text-white/70 transition-colors hover:text-white"
           >
             <span>See the full workshop</span>
-            <span aria-hidden="true" className="transition-transform group-hover:translate-x-1" style={{ color: VIOLET }}>
+            <span
+              aria-hidden="true"
+              className="transition-transform group-hover:translate-x-1"
+              style={{ color: VIOLET }}
+            >
               →
             </span>
           </Link>
@@ -220,4 +223,3 @@ export default function SelectedWork() {
     </section>
   );
 }
-

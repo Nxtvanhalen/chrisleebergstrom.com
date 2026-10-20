@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import type { JSX } from 'react';
+import CookiePreferencesButton from './CookiePreferencesButton';
 
 // Social links configuration
 const SOCIAL_LINKS = [
@@ -45,7 +47,11 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer-inner">
         <div className="footer-logo">
-          <img src="/images/Purple Logo.png" alt="Chris Lee Bergstrom logo" className="h-8 w-auto" />
+          <img
+            src="/images/Purple Logo.png"
+            alt="Chris Lee Bergstrom logo"
+            className="h-8 w-auto"
+          />
         </div>
         <div className="flex justify-center gap-4 mt-4">
           {SOCIAL_LINKS.map((social) => (
@@ -64,13 +70,15 @@ export default function Footer() {
         <div className="footer-bottom">
           <p className="text-white!">
             &copy; {new Date().getFullYear()} CLB Consulting. All rights reserved. |{' '}
-            <a href="/privacy" className="text-white! hover:text-mauve transition-colors">
+            <Link href="/privacy" className="text-white! hover:text-mauve transition-colors">
               Privacy Policy
-            </a>{' '}
+            </Link>{' '}
             |{' '}
-            <a href="/sms" className="text-white! hover:text-mauve transition-colors">
+            <Link href="/sms" className="text-white! hover:text-mauve transition-colors">
               SMS Notifications
-            </a>
+            </Link>{' '}
+            |{' '}
+            <CookiePreferencesButton className="font-body text-sm text-white! hover:text-mauve transition-colors cursor-pointer bg-transparent p-0" />
           </p>
         </div>
       </div>

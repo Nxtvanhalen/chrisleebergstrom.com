@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Footer from '../../components/Footer';
 import Header from '../../components/Header';
+import { OG_IMAGES } from '../og-image';
 import BlogClient from './BlogClient';
 
 export const metadata: Metadata = {
@@ -15,14 +16,7 @@ export const metadata: Metadata = {
       'Notes on agentic AI, live entertainment tech, and systems thinking from Chris Lee Bergstrom.',
     type: 'website',
     url: 'https://chrisleebergstrom.com/blog',
-    images: [
-      {
-        url: '/images/profile/chris-profile-square-2.jpg',
-        width: 1200,
-        height: 1200,
-        alt: 'Chris Lee Bergstrom — AI developer and live entertainment veteran',
-      },
-    ],
+    images: OG_IMAGES,
   },
   twitter: {
     card: 'summary_large_image',
@@ -31,7 +25,6 @@ export const metadata: Metadata = {
     title: 'Musings | Chris Lee Bergstrom',
     description:
       'Notes on agentic AI, live entertainment tech, and systems thinking from Chris Lee Bergstrom.',
-    images: ['/images/profile/chris-profile-square-2.jpg'],
   },
 };
 

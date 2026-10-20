@@ -1,7 +1,8 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import Header from '../../components/Header';
+import { OG_IMAGES } from '../og-image';
 
 const VIOLET = '#9370DB';
 
@@ -17,21 +18,8 @@ export const metadata: Metadata = {
       'SMS notification terms for the Beacons monitoring platform — opt-in, message frequency, rates, STOP and HELP.',
     type: 'website',
     url: 'https://chrisleebergstrom.com/sms',
-    images: [
-      {
-        url: '/images/profile/chris-profile-square-2.jpg',
-        width: 1200,
-        height: 1200,
-        alt: 'Chris Lee Bergstrom — AI developer and live entertainment veteran',
-      },
-    ],
+    images: OG_IMAGES,
   },
-};
-
-export const viewport: Viewport = {
-  themeColor: '#9370DB',
-  width: 'device-width',
-  initialScale: 1,
 };
 
 export default function SmsPage() {

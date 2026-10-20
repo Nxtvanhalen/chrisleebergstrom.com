@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useChat } from '../../context/ChatContext';
 
 const VIOLET = '#9370DB';
@@ -229,7 +230,7 @@ export default function ProjectsClient() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            The two cards on the homepage are the spine. Everything below is the archive — shipped
+            The four cards on the homepage are the spine. Everything below is the archive — shipped
             work, internal infrastructure, and ongoing experiments. Each line a different way of
             asking: what does it look like when twenty years of running shows meets an AI build
             team?
@@ -482,7 +483,7 @@ export default function ProjectsClient() {
                 →
               </span>
             </a>
-            <a
+            <Link
               href="/"
               className="inline-flex items-center justify-center px-8 py-4 font-heading text-sm tracking-[0.15em] uppercase rounded-xs border transition-all duration-300 hover:bg-white/5"
               style={{
@@ -491,7 +492,7 @@ export default function ProjectsClient() {
               }}
             >
               ← Back to the work
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

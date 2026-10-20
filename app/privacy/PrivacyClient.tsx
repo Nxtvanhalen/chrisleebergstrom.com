@@ -5,6 +5,31 @@ import Link from 'next/link';
 
 const VIOLET = '#9370DB';
 
+// Bump this when the policy text changes. Hardcoded rather than `new Date()`:
+// that rendered "today" on every visit and mismatched between server and client.
+const LAST_UPDATED = '2026-10-20';
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+// Deterministic (no timezone or locale involvement) so SSR and client agree.
+function formatIsoDate(iso: string) {
+  const [year, month, day] = iso.split('-').map(Number);
+  return `${MONTHS[month - 1]} ${day}, ${year}`;
+}
+
 function H2({ children }: { children: React.ReactNode }) {
   return (
     <h2
@@ -26,11 +51,7 @@ function H3({ children }: { children: React.ReactNode }) {
 
 export default function PrivacyClient() {
   return (
-    <main
-      id="main-content"
-      className="relative bg-black text-white"
-      aria-label="Privacy Policy"
-    >
+    <main id="main-content" className="relative bg-black text-white" aria-label="Privacy Policy">
       {/* Header */}
       <section className="relative px-6 pt-32 pb-12 md:pt-40 md:pb-16">
         <div className="mx-auto max-w-3xl">
@@ -57,12 +78,7 @@ export default function PrivacyClient() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            Last updated ·{' '}
-            {new Date().toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
+            Last updated · <time dateTime={LAST_UPDATED}>{formatIsoDate(LAST_UPDATED)}</time>
           </motion.p>
         </div>
       </section>
@@ -88,41 +104,69 @@ export default function PrivacyClient() {
           <H3>Information You Provide</H3>
           <ul className="list-disc pl-6 space-y-2">
             <li>Contact information when you reach out via email</li>
-            <li>Any information you provide through our AI chat assistant (EVE)</li>
+            <li>Anything you type into our AI chat assistant (EVE) — see the EVE section below</li>
             <li>Professional information shared during consultations</li>
           </ul>
 
           <H3>Information Collected Automatically</H3>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>Browser type and version</li>
-            <li>Device information</li>
-            <li>IP address (anonymized)</li>
-            <li>Pages visited and time spent</li>
-            <li>Referring website</li>
+          <p>Collected through the analytics and monitoring tools described in the next section:</p>
+          <ul className="list-disc pl-6 space-y-2 mt-4">
+            <li>Browser type and version, operating system, and device type</li>
+            <li>Pages visited, time on page, and the referring website</li>
+            <li>
+              Approximate location (country/region), which the analytics providers derive from your
+              IP address. Neither provider shows us the address itself.
+            </li>
+            <li>
+              Your IP address, held briefly in our server's memory to rate-limit the EVE chat
+              endpoint and protect against abuse. We do not log it.
+            </li>
           </ul>
 
-          <H2>Cookies and Tracking</H2>
+          <H2>Analytics and Error Monitoring</H2>
+          <H3>Google Analytics 4</H3>
           <p>
-            We use cookies and similar tracking technologies to improve your experience on our
-            site. These include:
+            Runs only if you accept analytics cookies in the consent banner. It sets cookies (
+            <code className="font-mono text-sm">_ga</code>,{' '}
+            <code className="font-mono text-sm">_ga_*</code>) to recognise repeat visits and reports
+            page views and events to Google under the Google Analytics terms. Withdrawing consent
+            via "Cookie preferences" in the footer stops collection immediately and deletes those
+            cookies.
           </p>
-          <ul className="list-disc pl-6 space-y-2 mt-4">
+          <H3>Plausible Analytics</H3>
+          <p>
+            Runs for every visitor. Plausible is cookieless and collects no personal data: it
+            records aggregate page views, referrers, country, and device type, cannot identify you
+            or follow you across sites, and therefore does not require consent.
+          </p>
+          <H3>Sentry</H3>
+          <p>
+            When something on the site breaks, an error report (the error, its stack trace, and the
+            page URL) is sent to Sentry so we can fix it. Sentry is configured not to receive
+            request bodies, cookies, IP addresses, or anything you type into EVE.
+          </p>
+
+          <H2>Cookies and Browser Storage</H2>
+          <ul className="list-disc pl-6 space-y-2">
             <li>
-              <strong className="text-white">Essential cookies</strong> — required for the website
-              to function properly.
+              <strong className="text-white">Essential cookie</strong> — one cookie (
+              <code className="font-mono text-sm">cc_cookie</code>) remembers your consent choice
+              for six months so the banner doesn't reappear on every visit.
             </li>
             <li>
-              <strong className="text-white">Analytics cookies</strong> — help us understand how
-              visitors use the site (Google Analytics).
+              <strong className="text-white">Analytics cookies</strong> — the Google Analytics
+              cookies above, set only with your consent.
             </li>
             <li>
-              <strong className="text-white">Preference cookies</strong> — remember your settings
-              and preferences.
+              <strong className="text-white">Browser storage (not cookies)</strong> — EVE keeps your
+              chat history in your own browser's local storage so the conversation survives page
+              changes. It stays on your device; clearing this site's data in your browser removes
+              it.
             </li>
           </ul>
           <p className="mt-4">
-            You can control cookie preferences through our cookie-consent banner when you first
-            visit the site.
+            You choose your cookie preferences in the banner on your first visit and can change them
+            at any time via "Cookie preferences" in the site footer.
           </p>
 
           <H2>How We Use Your Information</H2>
@@ -130,29 +174,41 @@ export default function PrivacyClient() {
             <li>To provide and improve our services</li>
             <li>To respond to your inquiries and communications</li>
             <li>To analyze website usage and improve user experience</li>
-            <li>To send relevant updates about our services (with your consent)</li>
             <li>To comply with legal obligations</li>
           </ul>
 
           <H2>Data Sharing and Third Parties</H2>
           <p>
-            We do not sell, trade, or rent your personal information to third parties. We may
-            share your information only:
+            We do not sell, trade, or rent your personal information to third parties. We share data
+            only with the service providers that run the site, each bound by its own privacy terms:
           </p>
           <ul className="list-disc pl-6 space-y-2 mt-4">
             <li>
-              With service providers who assist in operating our website (under strict
-              confidentiality agreements)
+              <strong className="text-white">Render</strong> — hosts the website and its API
             </li>
-            <li>When required by law or to protect our rights</li>
-            <li>With your explicit consent</li>
+            <li>
+              <strong className="text-white">OpenAI</strong> — generates EVE's replies (see below)
+            </li>
+            <li>
+              <strong className="text-white">Google</strong> — Google Analytics 4, with your consent
+            </li>
+            <li>
+              <strong className="text-white">Plausible</strong> — cookieless site analytics
+            </li>
+            <li>
+              <strong className="text-white">Sentry</strong> — error monitoring
+            </li>
           </ul>
+          <p className="mt-4">
+            Beyond that, we disclose information only when required by law, to protect our rights,
+            or with your explicit consent.
+          </p>
 
           <H2>Data Security</H2>
           <p>
-            We implement appropriate technical and organizational measures to protect your
-            personal data against unauthorized access, alteration, disclosure, or destruction.
-            However, no method of transmission over the internet is 100% secure.
+            We implement appropriate technical and organizational measures to protect your personal
+            data against unauthorized access, alteration, disclosure, or destruction. However, no
+            method of transmission over the internet is 100% secure.
           </p>
 
           <H2>Your Rights</H2>
@@ -163,14 +219,25 @@ export default function PrivacyClient() {
             <li>Request deletion of your data</li>
             <li>Object to processing of your data</li>
             <li>Data portability</li>
-            <li>Withdraw consent at any time</li>
+            <li>
+              Withdraw consent at any time — for analytics, directly via "Cookie preferences" in the
+              footer
+            </li>
           </ul>
 
           <H2>AI Assistant (EVE)</H2>
           <p>
-            Our AI assistant EVE processes conversations in real time to provide helpful
-            responses. Conversations may be logged for quality improvement but are not linked to
-            personal identifiers unless you explicitly provide such information.
+            EVE is powered by OpenAI. Each message you send goes through our server to OpenAI's API,
+            which generates the reply. OpenAI keeps the thread for a limited period so follow-up
+            questions have context, and processes it under its API data-usage terms (API
+            conversations are not used to train its models by default). We do not store chat
+            transcripts on our servers, and our error monitoring is configured to exclude them.
+          </p>
+          <p className="mt-4">
+            Your side of the conversation is saved in your own browser's local storage so EVE can
+            pick up where you left off; it never leaves your device except as part of the chat
+            itself. Treat EVE like a public contact form: please don't share passwords, financial
+            details, or other sensitive information with her.
           </p>
 
           <H2>Mobile / SMS Messaging</H2>

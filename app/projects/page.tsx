@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Footer from '../../components/Footer';
 import Header from '../../components/Header';
+import { OG_IMAGES } from '../og-image';
 import ProjectsClient from './ProjectsClient';
 
 export const metadata: Metadata = {
@@ -15,14 +16,7 @@ export const metadata: Metadata = {
       'Selected work from Chris Lee Bergstrom: agentic AI tools, entertainment-tech systems, and live-events software.',
     type: 'website',
     url: 'https://chrisleebergstrom.com/projects',
-    images: [
-      {
-        url: '/images/profile/chris-profile-square-2.jpg',
-        width: 1200,
-        height: 1200,
-        alt: 'Chris Lee Bergstrom - AI Strategy Consultant',
-      },
-    ],
+    images: OG_IMAGES,
   },
   twitter: {
     card: 'summary_large_image',
@@ -31,7 +25,6 @@ export const metadata: Metadata = {
     title: 'Projects | Chris Lee Bergstrom',
     description:
       'Selected work from Chris Lee Bergstrom: agentic AI tools, entertainment-tech systems, and live-events software.',
-    images: ['/images/profile/chris-profile-square-2.jpg'],
   },
 };
 
@@ -39,7 +32,8 @@ const projectsSchema = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
   name: 'Projects — Chris Lee Bergstrom',
-  description: 'Showcase of AI, entertainment-tech, and live-events projects by Chris Lee Bergstrom.',
+  description:
+    'Showcase of AI, entertainment-tech, and live-events projects by Chris Lee Bergstrom.',
   url: 'https://chrisleebergstrom.com/projects',
   author: {
     '@type': 'Person',

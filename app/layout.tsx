@@ -3,8 +3,10 @@ import { Chakra_Petch, JetBrains_Mono, Newsreader } from 'next/font/google';
 import { headers } from 'next/headers';
 import AnalyticsTracker from '../components/AnalyticsTracker';
 import CookieConsentLoader from '../components/CookieConsentLoader';
+import MotionProvider from '../components/MotionProvider';
 import PersistentChat from '../components/PersistentChat';
 import { ChatProvider } from '../context/ChatContext';
+import { OG_IMAGES } from './og-image';
 import '../styles/global.css';
 
 // Plausible Analytics — privacy-first, cookieless, and consent-free, so unlike
@@ -48,15 +50,9 @@ export const metadata: Metadata = {
   // Site-wide fallback share image. Without one, any page missing its own
   // openGraph.images makes link previews (iMessage etc.) scrape the page and
   // pick the transparent header logo, which renders on a checkerboard.
+  // Pages that set their own `openGraph` must repeat it (see og-image.ts).
   openGraph: {
-    images: [
-      {
-        url: '/images/profile/chris-profile-square-2.jpg',
-        width: 1200,
-        height: 1200,
-        alt: 'Chris Lee Bergstrom — AI developer and live entertainment veteran',
-      },
-    ],
+    images: OG_IMAGES,
   },
   manifest: '/site.webmanifest',
   icons: {
@@ -82,8 +78,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Defined once here — pages inherit it. Matches theme_color in
+// public/site.webmanifest; the two used to disagree (#000000 vs #9370DB).
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: '#9370DB',
   width: 'device-width',
   initialScale: 1,
 };
@@ -122,10 +120,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
           </>
         )}
-        <ChatProvider>
-          {children}
-          <PersistentChat />
-        </ChatProvider>
+        <MotionProvider>
+          <ChatProvider>
+            {children}
+            <PersistentChat />
+          </ChatProvider>
+        </MotionProvider>
         <AnalyticsTracker />
         <CookieConsentLoader />
       </body>

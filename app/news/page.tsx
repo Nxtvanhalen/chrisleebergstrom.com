@@ -1,7 +1,8 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Footer from '../../components/Footer';
 import Header from '../../components/Header';
+import { OG_IMAGES } from '../og-image';
 import NewsClient from './NewsClient';
 
 export const metadata: Metadata = {
@@ -11,42 +12,25 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://chrisleebergstrom.com/news' },
   openGraph: {
     title: 'News | Chris Lee Bergstrom',
-    description:
-      'Press coverage, podcast appearances, and credits featuring Chris Lee Bergstrom.',
+    description: 'Press coverage, podcast appearances, and credits featuring Chris Lee Bergstrom.',
     type: 'website',
     url: 'https://chrisleebergstrom.com/news',
-    images: [
-      {
-        url: '/images/profile/chris-profile-square-2.jpg',
-        width: 1200,
-        height: 1200,
-        alt: 'Chris Lee Bergstrom — AI developer and live entertainment veteran',
-      },
-    ],
+    images: OG_IMAGES,
   },
   twitter: {
     card: 'summary_large_image',
     site: '@chrisleebergstrom',
     creator: '@chrisleebergstrom',
     title: 'News | Chris Lee Bergstrom',
-    description:
-      'Press coverage, podcast appearances, and credits featuring Chris Lee Bergstrom.',
-    images: ['/images/profile/chris-profile-square-2.jpg'],
+    description: 'Press coverage, podcast appearances, and credits featuring Chris Lee Bergstrom.',
   },
-};
-
-export const viewport: Viewport = {
-  themeColor: '#9370DB',
-  width: 'device-width',
-  initialScale: 1,
 };
 
 const newsSchema = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
   name: 'News & Press — Chris Lee Bergstrom',
-  description:
-    'Latest news, press coverage, and media appearances featuring Chris Lee Bergstrom',
+  description: 'Latest news, press coverage, and media appearances featuring Chris Lee Bergstrom',
   url: 'https://chrisleebergstrom.com/news',
   author: {
     '@type': 'Person',

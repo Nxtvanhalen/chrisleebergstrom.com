@@ -3,9 +3,23 @@
 import { useEffect } from 'react';
 
 const GA_TRACKING_ID = 'G-XZ6CF9XQD7';
+// Google's documented kill switch: while this global is true, gtag.js stops
+// collecting for the property — no hits, no cookie refresh.
+const GA_DISABLE_KEY = `ga-disable-${GA_TRACKING_ID}`;
+
+type CookieConsentApi = typeof import('vanilla-cookieconsent');
+
+function setGaDisabled(disabled: boolean) {
+  (window as unknown as Record<string, unknown>)[GA_DISABLE_KEY] = disabled;
+}
 
 function loadGoogleAnalytics() {
-  if (window.gtag) return;
+  setGaDisabled(false);
+  if (window.gtag) {
+    // Script already loaded this session (consent withdrawn, then re-granted).
+    window.gtag('consent', 'update', { analytics_storage: 'granted' });
+    return;
+  }
   const s = document.createElement('script');
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
@@ -21,11 +35,13 @@ function loadGoogleAnalytics() {
   document.head.appendChild(s);
 }
 
-declare global {
-  interface Window {
-    gtag?: (...args: any[]) => void;
-    dataLayer?: any[];
-  }
+// Consent withdrawn: stop collection and remove the cookies GA already set
+// (_ga, _ga_<container>, _gid). The script stays loaded — the kill switch makes
+// every later gtag() call a no-op for this property.
+function disableGoogleAnalytics(CookieConsent: CookieConsentApi) {
+  setGaDisabled(true);
+  window.gtag?.('consent', 'update', { analytics_storage: 'denied' });
+  CookieConsent.eraseCookies([/^_ga/, '_gid']);
 }
 
 export default function CookieConsentLoader() {
@@ -38,7 +54,12 @@ export default function CookieConsentLoader() {
 
       await CookieConsent.run({
         guiOptions: {
-          consentModal: { layout: 'bar', position: 'bottom center', equalWeightButtons: false, flipButtons: false },
+          consentModal: {
+            layout: 'bar',
+            position: 'bottom center',
+            equalWeightButtons: false,
+            flipButtons: false,
+          },
         },
         categories: {
           necessary: { enabled: true, readOnly: true },
@@ -71,7 +92,7 @@ export default function CookieConsentLoader() {
                   {
                     title: 'Analytics',
                     description:
-                      'Help us understand how visitors use the site so we can improve it (Google Analytics).',
+                      'Help us understand how visitors use the site so we can improve it (Google Analytics). Withdrawing consent stops collection and removes its cookies. You can reopen this dialog any time from "Cookie preferences" in the footer.',
                     linkedCategory: 'analytics',
                   },
                 ],
@@ -84,13 +105,18 @@ export default function CookieConsentLoader() {
             loadGoogleAnalytics();
           }
         },
-        onChange: () => {
+        onChange: ({ changedCategories }) => {
+          if (!changedCategories.includes('analytics')) return;
           if (CookieConsent.acceptedCategory('analytics')) {
             loadGoogleAnalytics();
+          } else {
+            disableGoogleAnalytics(CookieConsent);
           }
         },
       });
-    })();
+    })().catch((err: unknown) => {
+      console.error('Cookie consent failed to initialise:', err);
+    });
 
     return () => {
       cancelled = true;

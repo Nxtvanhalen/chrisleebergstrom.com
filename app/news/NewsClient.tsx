@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import Link from 'next/link';
 
 const VIOLET = '#9370DB';
 
@@ -95,11 +96,7 @@ function PressCard({
 
 export default function NewsClient() {
   return (
-    <main
-      id="main-content"
-      className="relative bg-black text-white"
-      aria-label="News and Press"
-    >
+    <main id="main-content" className="relative bg-black text-white" aria-label="News and Press">
       {/* Header */}
       <section className="relative px-6 pt-32 pb-12 md:pt-40 md:pb-16 lg:pt-48 lg:pb-20">
         <div className="mx-auto max-w-4xl">
@@ -127,8 +124,8 @@ export default function NewsClient() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            Podcast appearances, mixing-philosophy interviews, live recordings, and the credits
-            that came out of the road work.
+            Podcast appearances, mixing-philosophy interviews, live recordings, and the credits that
+            came out of the road work.
           </motion.p>
         </div>
       </section>
@@ -144,13 +141,13 @@ export default function NewsClient() {
             body={
               <>
                 <p>
-                  Chris joins host Adam Grimm for a long-form conversation on what it actually
-                  takes to keep a tour moving: load-ins, front-of-house, tour management, the
-                  difference between a domestic run and an overseas one.
+                  Chris joins host Adam Grimm for a long-form conversation on what it actually takes
+                  to keep a tour moving: load-ins, front-of-house, tour management, the difference
+                  between a domestic run and an overseas one.
                 </p>
                 <p>
-                  Bands and rooms mentioned: The Dandy Warhols, Black Rebel Motorcycle Club,
-                  Tracy Lawrence, the Oregon Symphony.
+                  Bands and rooms mentioned: The Dandy Warhols, Black Rebel Motorcycle Club, Tracy
+                  Lawrence, the Oregon Symphony.
                 </p>
                 <p>
                   Honest on the harder parts too — touring's old stereotype, what's actually
@@ -215,14 +212,14 @@ export default function NewsClient() {
             body={
               <>
                 <p>
-                  Nearly two decades of mixing live sound — The Dandy Warhols, the Oregon
-                  Symphony — and a working setup built around Campfire Audio in-ear monitors for
-                  consistent monitoring across very different rooms.
+                  Nearly two decades of mixing live sound — The Dandy Warhols, the Oregon Symphony —
+                  and a working setup built around Campfire Audio in-ear monitors for consistent
+                  monitoring across very different rooms.
                 </p>
                 <p>
                   The piece runs through virtual playback during soundchecks, the Solstice and
-                  Equinox IEMs for different scenarios, and the shift from speakers to in-ears
-                  for studio work during quarantine.
+                  Equinox IEMs for different scenarios, and the shift from speakers to in-ears for
+                  studio work during quarantine.
                 </p>
               </>
             }
@@ -299,7 +296,7 @@ export default function NewsClient() {
                 →
               </span>
             </a>
-            <a
+            <Link
               href="/"
               className="inline-flex items-center justify-center px-8 py-4 font-heading text-sm tracking-[0.15em] uppercase rounded-xs border transition-all duration-300 hover:bg-white/5"
               style={{
@@ -308,7 +305,7 @@ export default function NewsClient() {
               }}
             >
               ← Back to the work
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>
