@@ -59,7 +59,14 @@
       "components/**/*.tsx",
       "context/**/*.ts",
       "context/**/*.tsx",
-      "proxy.ts"
+      "lib/**/*.ts",
+      "types/**/*.ts",
+      "tests/**/*.ts",
+      "proxy.ts",
+      "instrumentation.ts",
+      "instrumentation-client.ts",
+      "sentry.server.config.ts",
+      "sentry.shared.ts"
     ]
   }
 }

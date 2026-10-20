@@ -1,7 +1,13 @@
 {
-  "name": "CLB Consultancy - AI Strategy & Entertainment Technology",
-  "short_name": "CLB Consultancy",
-  "description": "Strategy Born from the Wreckage, Intelligence Forged in the Fire. AI consulting for entertainment, hospitality, and live events.",
+  "name": "Chris Lee Bergstrom — AI Developer + 20 Years Live Entertainment",
+  "short_name": "Bergstrom",
+  "description": "AI developer with 20 years in live entertainment. Building agentic software for venues, tours, and live events — front-of-house engineer turned full-stack developer, using AI agents as the build team.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#9370DB",
+  "background_color": "#000000",
   "icons": [
     {
       "src": "/images/Favicon/android-chrome-192x192.png",
@@ -9,14 +15,9 @@
       "type": "image/png"
     },
     {
-      "src": "/images/Favicon/android-chrome-512x512.png", 
+      "src": "/images/Favicon/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "theme_color": "#9370DB",
-  "background_color": "#000000",
-  "display": "standalone",
-  "start_url": "/",
-  "scope": "/"
+  ]
 }

@@ -25,7 +25,9 @@ updates:
         update-types:
           - "minor"
     ignore:
-      # Pin major versions — handle migrations manually
+      # No PRs for MAJOR bumps of the framework/toolchain below — those migrations are
+      # done by hand. Patch and minor bumps of these still arrive through the groups
+      # above, and majors of every other dependency still get their own PR.
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react"
@@ -39,8 +41,6 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
       - dependency-name: "tailwindcss"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "openai"
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]

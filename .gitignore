@@ -7,14 +7,21 @@ node_modules/
 /.next/
 /out/
 .vercel
+*.tsbuildinfo
 
 # Next.js auto-generated TypeScript reference — regenerated between
 # dev (./.next/dev/types/routes.d.ts) and build (./.next/types/routes.d.ts)
 # which causes local churn. Next creates it on demand; no value in tracking.
 next-env.d.ts
 
-# Environment variables
-.env*.local
+# Environment variables — only the documented template is tracked
+.env*
+!.env.example
+.env.sentry-build-plugin
+.sentryclirc
+
+# Claude Code session settings
+.claude/
 
 # Debug
 npm-debug.log*
