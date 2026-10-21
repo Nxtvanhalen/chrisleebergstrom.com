@@ -10,10 +10,9 @@ import SectionHeading from './SectionHeading';
 
 // Shared by both cards. The border colour is animated on hover, so its base
 // value is set inline (see lib/theme).
+// Hover is CSS only (see ProjectCard); motion just runs the reveal.
 const CARD =
-  'group relative block overflow-hidden rounded-xs border bg-black/40 backdrop-blur-md transition-all duration-500';
-const CARD_STYLE = { borderColor: mauve(0.22) };
-const CARD_HOVER = { borderColor: mauve(0.7), boxShadow: `0 0 32px ${mauve(0.25)}` };
+  'group relative block overflow-hidden rounded-xs border bg-black/40 backdrop-blur-md transition-[border-color,box-shadow] duration-300 border-mauve/22 hover:border-mauve/70 hover:shadow-[0_0_28px_rgba(147,112,219,0.22)]';
 const HOVER_WASH = { background: `linear-gradient(180deg, ${mauve(0)} 60%, ${mauve(0.18)} 100%)` };
 
 export default function OffTheClock() {
@@ -43,8 +42,6 @@ export default function OffTheClock() {
             target="_blank"
             rel="noopener noreferrer"
             className={CARD}
-            style={CARD_STYLE}
-            whileHover={CARD_HOVER}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
@@ -86,8 +83,6 @@ export default function OffTheClock() {
             type="button"
             onClick={toggleChat}
             className={`${CARD} text-left w-full cursor-pointer`}
-            style={CARD_STYLE}
-            whileHover={CARD_HOVER}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}

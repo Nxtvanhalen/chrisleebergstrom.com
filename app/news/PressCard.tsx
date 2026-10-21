@@ -2,7 +2,6 @@
 
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { mauve } from '@/lib/theme';
 
 type PressCardProps = {
   code: string;
@@ -31,10 +30,8 @@ export default function PressCard({
 }: PressCardProps) {
   return (
     <motion.article
-      className="relative rounded-xs border bg-black/40 backdrop-blur-md p-7 md:p-9 transition-all duration-500"
-      // Border colour is animated below, so its base value is set here (see lib/theme).
-      style={{ borderColor: mauve(0.22) }}
-      whileHover={{ borderColor: mauve(0.7), boxShadow: `0 0 32px ${mauve(0.22)}` }}
+      // Hover is CSS only (see ProjectCard); motion just runs the reveal.
+      className="relative rounded-xs border bg-black/40 backdrop-blur-md p-7 md:p-9 transition-[border-color,box-shadow] duration-300 border-mauve/22 hover:border-mauve/70 hover:shadow-[0_0_28px_rgba(147,112,219,0.22)]"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}

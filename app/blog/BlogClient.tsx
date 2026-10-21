@@ -7,7 +7,6 @@ import PageCta from '@/components/PageCta';
 import PageHero from '@/components/PageHero';
 import Reveal from '@/components/Reveal';
 import { mailto, SUBSTACK_URL } from '@/lib/site';
-import { mauve } from '@/lib/theme';
 
 interface SubstackPost {
   title: string;
@@ -57,10 +56,8 @@ function PostCard({ code, post, delay = 0 }: PostCardProps) {
       href={post.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative block rounded-xs border bg-black/40 backdrop-blur-md p-6 lg:p-7 transition-all duration-500"
-      // Border colour is animated below, so its base value is set here (see lib/theme).
-      style={{ borderColor: mauve(0.22) }}
-      whileHover={{ borderColor: mauve(0.7), boxShadow: `0 0 28px ${mauve(0.22)}` }}
+      // Hover is CSS only (see ProjectCard); motion just runs the reveal.
+      className="group relative block rounded-xs border bg-black/40 backdrop-blur-md p-6 lg:p-7 transition-[border-color,box-shadow] duration-300 border-mauve/22 hover:border-mauve/70 hover:shadow-[0_0_28px_rgba(147,112,219,0.22)]"
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}

@@ -24,15 +24,10 @@ export default function ProjectCard({ code, project, variant = 'standard' }: Pro
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative block overflow-hidden rounded-xs border bg-black/40 backdrop-blur-md transition-all duration-500"
-      // Border colour is animated below, so its base value is set here (see lib/theme).
-      style={{ borderColor: mauve(0.25) }}
-      whileHover={{
-        scale: 1.01,
-        borderColor: mauve(0.9),
-        boxShadow: `0 0 40px ${mauve(0.35)}`,
-        transition: { duration: 0.3 },
-      }}
+      // Hover is plain CSS so it runs one transition, at the same speed in and out;
+      // motion only handles the scroll-in reveal. (Animating hover in motion as well
+      // as `transition-all` made the two fight: a laggy double ease on every move.)
+      className="group relative block overflow-hidden rounded-xs border border-mauve/25 bg-black/40 backdrop-blur-md transition-[scale,border-color,box-shadow] duration-300 hover:border-mauve/90 hover:shadow-[0_0_40px_rgba(147,112,219,0.35)] motion-safe:hover:scale-[1.01]"
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}

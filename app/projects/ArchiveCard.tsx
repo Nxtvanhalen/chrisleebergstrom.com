@@ -2,7 +2,6 @@
 
 import { motion } from 'motion/react';
 import { useChat } from '@/context/ChatContext';
-import { mauve } from '@/lib/theme';
 
 // Compact card for the /projects archive. Plain by default; a link when
 // `href` is given, and a button that opens EVE when `eve` is set.
@@ -18,11 +17,9 @@ type ArchiveCardProps = {
   delay?: number;
 };
 
+// Hover is CSS only (see ProjectCard); motion just runs the reveal.
 const CARD =
-  'group relative block rounded-xs border bg-black/40 backdrop-blur-md p-6 lg:p-7 transition-all duration-500';
-// Border colour is animated on hover, so its base value is set inline (see lib/theme).
-const CARD_STYLE = { borderColor: mauve(0.22) };
-const CARD_HOVER = { borderColor: mauve(0.7), boxShadow: `0 0 28px ${mauve(0.2)}` };
+  'group relative block rounded-xs border bg-black/40 backdrop-blur-md p-6 lg:p-7 transition-[border-color,box-shadow] duration-300 border-mauve/22 hover:border-mauve/70 hover:shadow-[0_0_28px_rgba(147,112,219,0.22)]';
 
 export default function ArchiveCard({
   code,
@@ -58,8 +55,6 @@ export default function ArchiveCard({
   );
 
   const motionProps = {
-    style: CARD_STYLE,
-    whileHover: CARD_HOVER,
     initial: { opacity: 0, y: 18 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, margin: '-80px' },
