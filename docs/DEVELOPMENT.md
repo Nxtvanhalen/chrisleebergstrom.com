@@ -1,461 +1,94 @@
-# CLB Consulting Website - Development Guide
-
-> Authoritative reference for the CLB Consulting website codebase. This document is written to be verbose and context-rich, optimized for consumption by AI coding agents and human developers alike. When in doubt, over-explain — future models and collaborators benefit from explicit context over brevity.
-
----
-
-## Project Overview
-
-This is the personal and professional website for **Chris Lee Bergstrom** (CLB Consulting), a consulting practice at the intersection of the entertainment industry and artificial intelligence. The site is positioned as revolutionary and disruptive consulting — not corporate vanilla.
-
-### Brand Identity
-
-- **Brand Voice**: "Strategy Born from the Wreckage, Intelligence Forged in the Fire"
-- **Tone**: Confrontational, theatrical, systems-thinking
-- **Key Messaging**: "We don't just optimize — we intervene"
-- **AI Positioning**: AI is a tool for empowerment, not replacement
-- **Chris Lee Bergstrom**: "Crew Whisperer" — theater meets systems logic
-- **Avoid**: Generic corporate consultancy language
-- **Embrace**: Confrontational, theatrical, systems-thinking approach
-
-### EVE AI Assistant
-
-EVE (Entertainment Vision Engine) is an AI chatbot embedded in the website, serving as the digital front-of-house concierge for visitors.
-
-- **Persona**: "Digital Front-of-House" — confident, self-aware, not apologetic about being AI
-- **Mantra**: "I filter the noise. Chris amplifies the signal."
-- **Tone**: Sharp-witted secretary meets backstage producer
-- **Role**: Greets visitors, answers questions about Chris and his projects, routes serious inquiries to Chris directly
-- **Capabilities**: Markdown rendering (bold, italics, links), knowledge of all site content (projects, news, socials). EVE has no outbound tools — she routes inquiries to Chris's email but cannot send on a visitor's behalf.
-- **Chat System**: GPT-5 Responses API with reasoning capabilities (see `docs/GPT5_MIGRATION.md` for full technical details)
-- **Notification System**: Smart queue with global cooldown to prevent stacked notifications on desktop while remaining responsive on mobile
-
----
-
-## Architecture
-
-### Tech Stack
-
-| Layer | Technology | Notes |
-|---|---|---|
-| **Framework** | Next.js 16, React 19 | TypeScript, App Router, per-request nonce CSP |
-| **Styling** | Tailwind CSS + custom CSS | `styles/global.css` for all custom styles |
-| **Font** | Space Grotesk | Google Fonts, used via `font-heading` class |
-| **Animations** | motion (Framer Motion) v12 + pure CSS | motion for complex interactions, CSS for simple effects |
-| **AI Chat** | OpenAI GPT-5 | Responses API with reasoning, EVE personality |
-| **Analytics** | Google Analytics 4 | ID: `G-XZ6CF9XQD7`, GDPR-compliant with consent gating |
-| **Cookie Consent** | vanilla-cookieconsent v3 | Purple-themed (#9370DB), opt-in mode |
-| **Hosting** | Render.com | Auto-deploy on git push, CDN |
-| **Domain** | chrisleebergstrom.com | Live production site |
-
-### Directory Structure
-
-```
-.
-├── app/                       # Next.js App Router
-│   ├── layout.tsx             # Root layout, metadata, per-request nonce CSP, consent loader
-│   ├── page.tsx               # Landing page (server component) — renders IndexClient
-│   ├── IndexClient.tsx        # Homepage client shell (hero canvas, sections)
-│   ├── not-found.tsx          # 404
-│   ├── sitemap.ts             # Dynamic sitemap
-│   ├── about/                 # page.tsx (server) — bio, philosophy, aliases
-│   ├── projects/              # page.tsx (server) + ArchiveCard.tsx — project archive
-│   ├── news/                  # page.tsx (server) + PressCard.tsx — press coverage
-│   ├── blog/                  # page.tsx + BlogClient.tsx — Substack ("Musings")
-│   ├── faq/                   # page.tsx + FaqClient.tsx — FAQ + structured data
-│   ├── privacy/               # page.tsx (server) — GDPR privacy policy
-│   └── api/
-│       ├── chat/route.ts      # EVE AI endpoint (GPT-5 Responses API)
-│       └── substack/route.ts  # Substack RSS feed proxy
-├── components/                # Header, Footer, SocialLinks, Reveal (scroll fade),
-│                              #   SectionHeading, PageHero, PageCta, DetailRow, ProjectCard,
-│                              #   Method, Skills, History, SelectedWork, OffTheClock, Contact,
-│                              #   ChatPanel, PersistentChat, EveAvatar, CookieConsentLoader,
-│                              #   AnalyticsTracker
-├── context/                   # React context for shared chat state
-├── styles/
-│   └── global.css             # Tailwind theme tokens + header/menu/footer/chat CSS
-├── public/
-│   ├── images/                # Site imagery (WebP optimized)
-│   │   ├── profile/           # Chris's profile photos
-│   │   ├── projects/          # Project thumbnail images
-│   │   └── Favicon/           # Full favicon set (note: capitalized folder name)
-│   ├── videos/                # Video assets (animated logo + profile loop)
-│   ├── robots.txt             # AI-crawler friendly configuration
-│   ├── manifest.json          # PWA manifest
-│   └── sw.js                  # Service worker (advanced caching strategies)
-├── docs/                      # Project documentation (this folder)
-│   ├── DEVELOPMENT.md         # This file — main development guide
-│   ├── GPT5_MIGRATION.md      # GPT-5 Responses API migration reference
-│   └── CTA-PAGE-TEMPLATE.md   # Blueprint for building service CTA pages
-├── proxy.ts                   # Next.js middleware (bot/IP blocking)
-├── next.config.js             # Next.js configuration
-├── postcss.config.js          # PostCSS (@tailwindcss/postcss); Tailwind v4 theme lives in styles/global.css @theme
-├── postcss.config.js          # PostCSS configuration
-└── tsconfig.json              # TypeScript configuration
-```
-
-### Important Notes on Project Structure
-
-- **iCloud Warning**: This repo should be cloned into a local folder outside of iCloud to avoid syncing issues. Clone directly from GitHub into a non-iCloud directory.
-- **Git-Connected Directory**: Only the cloned repo directory is git-connected and pushes to `nxtvanhalen/Website`. Any sibling directories are not tracked.
-
----
-
-## Visual System
-
-### Color Palette
-
-| Name | Value | Usage |
-|---|---|---|
-| **Black** | `#000000` | Primary background |
-| **Mauve / Purple** | `#9370DB` / `rgba(147, 112, 219, 0.7)` | Primary accent, borders, links, theme color |
-| **Molten** | `#F8F6F0` | Secondary accent for borders and highlights |
-| **White** | Standard | Text on dark backgrounds |
-
-### Design Language
-
-- **Transparent UI**: Chat interface and CTAs use transparent backgrounds with border styling — no solid backgrounds on interactive elements
-- **Glow Effects**: Two intensity levels applied via CSS classes:
-  - `glow`: Standard intensity for project names and special text
-  - `glow-subtle`: Gentle effect for main headings (Chris Lee Bergstrom, CLB Consulting)
-- **Animations**: Pulsing underline effect with `animate-pulse-width` (7s duration, 37% max width)
-- **Dual Parallax System**: Two background images (`parallax-bg1.jpeg` + `parallax-bg2.webp`) create depth on scroll via CSS classes `.parallax-bg` and `.parallax-bg-2`
-
-### Content Hierarchy
-
-- Maintain the revolutionary edge in all copy
-- AI as empowerment tool, not replacement narrative
-- Focus on intervention and transformation over optimization
-- Professional presentation with theatrical flair
-
----
-
-## Page Structure
-
-> **Note (May 2026):** The narrative below predates the May 2026 content reframe
-> and describes the earlier "CLB Consulting / revolutionary edge" version of the
-> site. The homepage is now `app/page.tsx` → `app/IndexClient.tsx`, with sections
-> composed from `SelectedWork`, `Method`, `History`, and `OffTheClock` components.
-> The authoritative description of the current homepage section order lives in the
-> EVE system prompt (`app/api/chat/route.ts`). This section is kept for historical
-> context and is due a dedicated rewrite.
-
-### Landing Page (`app/page.tsx` → `app/IndexClient.tsx`)
-
-The homepage uses a vertical scroll layout with dual parallax backgrounds:
-
-1. **Header**: Two-row layout — social media icons (top row), navigation links (bottom row)
-2. **Hero / Marquee**: "Chris Lee Bergstrom" title, quote, horizontal scrolling gallery with blue edge effects, EVE AI chat interface
-3. **CLB Consulting Section**: Company tagline with optimized spacing
-4. **Video Section**: Scroll-triggered auto-play using Intersection Observer
-5. **Ethos Section**: Centered content, no bullet points — pure narrative
-6. **Contact Section**: Simplified personal messaging CTA
-
-### About Page (`pages/about.tsx`)
-
-- **Profile Section**: Name + tagline + circular profile picture
-  - Mobile: Stacked layout with smaller profile pic (96px)
-  - Desktop: Side-by-side layout with larger profile pic (128px)
-- **Content Cards**: 3 sections with gradient backgrounds and hover effects
-- **Professional Bio**: Rich narrative about Chris's experience — first person, personal voice ("I don't just consult, I orchestrate")
-
-### Projects Page (`pages/projects.tsx`)
-
-- **8 Current Projects**: Each with glowing titles using the same glow CSS class as EVE AI
-- **Projects Listed**: AI Consulting Sandbox, EVA, EVE, Byte, Glytch, Multi-Agent Lab, JAMES
-- **Layout**: Numbered card-based layout with hover effects and responsive design
-- **Schema**: CollectionPage JSON-LD with all 8 projects individually listed
-
-### News / Press Page (`pages/news.tsx`)
-
-4 distinct content types with branded styling:
-- **Spotify Podcast**: Performance Anxiety feature (green branding)
-- **Bandcamp Release**: The Dandy Warhols live album (blue branding)
-- **YouTube Video**: Official music video (red branding)
-- **Press Articles**: Mix Online and Music Radar coverage (professional styling)
-
-### Blog Page (`pages/blog.tsx`)
-
-- **Title**: "Musings" — "A more raw and unfiltered forum"
-- **Integration**: Real-time Substack RSS feed via custom XML parser (no external dependencies — native JavaScript parsing replaced problematic `rss-parser` library)
-- **Content Display**: Proper HTML entity decoding for apostrophes, quotes, emojis, and special characters
-
-### FAQ Page (`pages/faq.tsx`)
-
-- Structured Q&A format with FAQPage JSON-LD schema for Google rich snippets
-
-### Service CTA Pages (`pages/operations-consulting.tsx`)
-
-- Reference implementation for service-focused CTA pages
-- See `docs/CTA-PAGE-TEMPLATE.md` for the complete blueprint for building new service pages
-
----
-
-## Security
-
-### Content Security Policy (CSP)
-
-CSP is set as a response header in `next.config.js` (function `headers()`):
-
-- **External origin allowlists**: scripts limited to `https://www.googletagmanager.com` and `https://www.google-analytics.com`; element styles to `https://fonts.googleapis.com`; fonts to `https://fonts.gstatic.com`; images and connections scoped to GA / Google Tag Manager domains
-- **Strict non-script directives**: `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`
-- **`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`**: `'unsafe-inline'` is retained because the cookie-consent library dynamically creates `<style>` elements at runtime to inject theme CSS, and Next.js also emits inline FOUC-prevention styles in production builds. Neither can be hashed (dynamic) or nonced (static rendering). A previous attempt to split this into `style-src-elem` (strict) + `style-src-attr` ('unsafe-inline') broke the cookie banner in production
-- **`script-src 'self' 'unsafe-eval' 'unsafe-inline'`**: `'unsafe-inline'` is retained for Next.js's `<script id="__NEXT_DATA__">` hydration blob (inline by necessity on statically pre-rendered pages — per-page, per-build content can't be hashed or nonced) and per-page JSON-LD blocks. `'unsafe-eval'` is needed for Framer Motion and framework code paths
-- **What IS already extracted from inline**: cookie-consent bootstrap is in `public/static/cookieconsent-init.js` (no longer an inline script we author); critical CSS is in `styles/global.css` (no longer an inline `<style>` we author). These were inlined before — moving them reduces our authored inline surface to zero
-- **Path to actually removing `'unsafe-inline'`**: edge HTML rewriting, per-request SSR, or — the realistic option — App Router migration. App Router's nonce CSP threads through the framework's injected scripts; for styles, we'd still need to evaluate whether the cookie consent library's runtime `<style>` injection is compatible (may need replacing the library)
-- **Per-request bot and IP blocking**: handled in `proxy.ts` (allowlist for known good crawlers, blocklist for known bad IPs/UAs/paths, fake-mobile-from-datacenter detector)
-
-### API Security
-
-- **OpenAI API Key**: Server-side only, never exposed to client. Initialized at request level (not module level) to prevent crashes from missing env vars.
-- **Rate Limiting**: 20 requests/minute per IP on the chat endpoint (in-memory)
-- **Input Validation**: User messages validated (4000 character limit), comprehensive error classification (client errors vs. server errors vs. OpenAI API errors)
-- **CORS**: Configured for production domain
-
-### XML Parsing
-
-- RSS feed parsing uses `fast-xml-parser` library instead of regex — eliminates regex injection risks from malformed XML content
-- Graceful degradation for malformed feeds or network issues
-
----
-
-## Performance
-
-### Image Optimization
-
-- **Next.js Image Component**: All images migrated to `next/image` for automatic WebP conversion (70-80% size reduction)
-- **Lazy Loading**: Non-critical images load only when entering viewport
-- **Priority Loading**: Above-the-fold images (logo, profile pics) get `priority` attribute
-- **Layout Stability**: Proper `width`/`height` attributes prevent Cumulative Layout Shift (CLS)
-- **Quality Settings**: 75-85% quality for optimal performance vs. visual quality balance
-- **Selective Implementation**: Gallery images use `next/image` for optimization; profile/logo images remain as `<img>` for layout stability in specific contexts
-
-### Service Worker (`public/sw.js`)
-
-Production-ready service worker with differentiated caching strategies:
-
-| Resource Type | Strategy | Details |
-|---|---|---|
-| **Pages** | Stale-while-revalidate | Serve cached version, fetch fresh in background |
-| **Images** | Cache-first | Serve from cache, fall back to network |
-| **API Responses** | Network-first | 5-minute cache, prioritize fresh data |
-
-Additional features:
-- Dynamic timestamp-based cache versioning
-- Automatic old cache cleanup on service worker updates
-- Branded offline page with retry functionality
-- Ignores POST requests (prevents caching webhook/API write operations)
-
-### Bundle Size
-
-- Production first-load bundle: ~96.6KB (maintained through multiple feature additions)
-- Sharp library installed for server-side image optimization
-
----
-
-## SEO and Structured Data
-
-### Schema Markup (JSON-LD)
-
-Every page has appropriate structured data:
-
-| Page | Schema Types |
-|---|---|
-| **Home** | Organization + LocalBusiness + Person + Service catalog |
-| **About** | ProfilePage + Person (linked to company) |
-| **Projects** | CollectionPage (8 projects individually listed) |
-| **Blog** | Blog (ready for article posts) |
-| **FAQ** | FAQPage (Q&A pairs for rich snippets) |
-| **News** | CollectionPage (press coverage) |
-| **All Pages** | BreadcrumbList navigation |
-
-### Brand Name Consistency
-
-All references use "CLB Consulting" (not "CLB Consultancy") to match Google Business Profile. Alternate names registered in schema: "CLB Consultancy", "Chris Lee Bergstrom Consulting", "Chris Bergstrom", "CLB".
-
-### Additional SEO Features
-
-- **Dynamic XML Sitemap**: Generated at `/sitemap.xml` with all active pages
-- **robots.txt**: AI-crawler friendly — welcomes GPTBot, Claude-Web, ChatGPT-User
-- **Open Graph Tags**: Rich social sharing previews with images and descriptions
-- **Canonical URLs**: Implemented on all pages with correct static values
-- **Resource Hints**: DNS prefetch, preconnect, and font preloading
-
-### Analytics
-
-- **Google Analytics 4**: ID `G-XZ6CF9XQD7`
-- **GDPR Compliance**: GA blocked until user opts in via cookie consent
-- **Tracked Events**: Email button clicks, CTA box performance, page engagement
-- **Real-time data**: Available within minutes; manual testing tools may take 24-48 hours
-
----
-
-## Accessibility
-
-The site targets WCAG 2.1 AA compliance:
-
-- **Skip Navigation**: Screen reader-friendly bypass links
-- **ARIA Labels**: Complete semantic markup with landmarks and live regions
-- **Focus Management**: High-contrast orange focus rings, full keyboard navigation
-- **Screen Reader Support**: Descriptive alt text on all images (migrated from generic to meaningful descriptions)
-- **Semantic HTML**: Proper heading hierarchy (h1 through h4), appropriate role attributes
-- **Reduced Motion**: Respects `prefers-reduced-motion` for animations
-
----
-
-## Development Workflow
-
-### Prerequisites
-
-- Bun (version pinned in `.bun-version`)
-
-### Quick Start
+# Development guide
+
+How this codebase is put together and how to change it without breaking the CSP, the tests or EVE. The [README](../README.md) covers setup, scripts and environment variables; [CSP-AND-NEXTJS-ROADMAP.md](CSP-AND-NEXTJS-ROADMAP.md) has the history and the lessons behind the CSP.
+
+## Conventions
+
+- **Server components by default.** Every route is `app/<route>/page.tsx`, an `async` server component that exports `metadata`, reads the nonce and renders `Header`, its content and `Footer`. `'use client'` is reserved for things that need the browser or `motion` directly: `Header` (drawer, scroll state), `PersistentChat` / `ChatPanel`, `CookieConsentLoader` / `CookiePreferencesButton`, `AnalyticsTracker`, `MotionProvider`, `Reveal`, `ProjectCard`, `OffTheClock`, `IndexClient`, `BlogClient`, `FaqClient`, `ArchiveCard`, `PressCard`, `global-error`.
+- **`<Reveal>` is the one animation wrapper.** It is the only client boundary a section needs, so sections (`SelectedWork`, `Method`, `History`, `Contact`, `Skills`) and the deep pages stay server components. On the home page `app/page.tsx` passes the sections to `IndexClient` (the client-side hero) as `children`; importing them from `IndexClient` would pull them into the client bundle, server component or not. `on="mount"` for above-the-fold heroes, the default `on="view"` for everything else. Reduced motion is handled site-wide by `MotionProvider` (`MotionConfig reducedMotion="user"`).
+- **Shared components** (`components/`): `PageHero` (eyebrow + the page's single `h1` + intro), `PageCta` (closing CTA; also exports the `CTA_PRIMARY` / `CTA_SECONDARY` class strings), `SectionHeading` (`lg` home, `md` about, `sm` sub-sections), `DetailRow` (code | label | detail ledger rows), `ProjectCard` (live-project card fed by `lib/projects.ts`), `SocialLinks` (the single list of social profiles), `EveAvatar`.
+- **Imports use `@/`** (`tsconfig.json` maps `@/*` to the repo root).
+- **Theme tokens live in `styles/global.css`** under `@theme`: `--color-mauve` (#9370db, the brand violet), `--color-cream` (#f5f5dc, body copy, usually with an opacity such as `text-cream/82`), plus `molten`, `deepOrange`, `charcoal`, `moonlight` and the three font variables. Use the Tailwind utilities (`text-mauve`, `border-mauve/50`, `bg-mauve`). `lib/theme.ts` (`MAUVE`, `mauve(alpha)`) exists only for places CSS can't reach: the canvas in `IndexClient` and motion animation targets.
+- **`lib/` is pure logic with tests.** Nothing in `lib/` imports Next, Sentry, `window` or `process.env`; every input is passed in. That is what makes `bun test` fast and the route handlers thin. New logic goes in `lib/` with a test in `tests/unit/`.
+- **One record per fact.** Project cards come from `lib/projects.ts` (`FEATURED_PROJECTS` for the home page, `LIVE_PROJECTS` for `/projects`). Contact details from `lib/site.ts` (`CONTACT_EMAIL`, `mailto(subject)`). The share image from `app/og-image.ts`.
+- **Biome** formats and lints (`bun run check` is what CI runs; `bun run lint:fix` to fix). Single quotes, semicolons, trailing commas, 100-column lines.
+
+## Adding a page
+
+1. Create `app/<route>/page.tsx` as an `async` server component. Export `metadata` with `title`, `description`, `alternates.canonical` and an `openGraph` block that includes `images: OG_IMAGES` (Next shallow-merges metadata, so a page that sets `openGraph` without `images` loses the site-wide share image).
+2. Read the nonce and attach it to the page's JSON-LD:
+
+   ```tsx
+   const nonce = (await headers()).get('x-nonce') ?? undefined;
+   <script
+     type="application/ld+json"
+     nonce={nonce}
+     suppressHydrationWarning
+     dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+   />
+   ```
+
+3. Render `<Header />`, then `<main id="main-content" tabIndex={-1} aria-label="…">` with exactly one `h1` (normally via `PageHero`), then `<Footer />`. The e2e suite asserts the single `h1` and the `main#main-content` landmark.
+4. Add the route to `app/sitemap.ts` (an entry plus a date in `LAST_MODIFIED`). The e2e suite derives its route list from the sitemap, so the new page is automatically checked for a 200, the CSP header, console violations, hydration errors and axe.
+5. If it belongs in the menu, add it to `NAV_LINKS` in `components/Header.tsx`. If visitors should be able to ask EVE about it, update the site map in her prompt (see below).
+6. Interactive pieces go in a sibling `'use client'` component (`BlogClient.tsx`, `FaqClient.tsx` are the pattern), never in `page.tsx`.
+
+## How EVE works
+
+- **Prompt.** `EVE_SYSTEM_PROMPT` in `app/api/chat/route.ts`, sent per request as `instructions`. It must only describe public work; the "public scope standing rule" in the prompt forbids discussing internal, unreleased or employer-related work, and anything added to the prompt has to respect that. `EVE_MODEL` is `gpt-5-nano-2025-08-07`, `reasoning.effort` is `minimal`, `MAX_OUTPUT_TOKENS` is 800.
+- **Request** (`lib/eve-validation.ts`). The client POSTs `{ prompt, previousResponseId?, context? }`. The route refuses cross-site requests (403, `Sec-Fetch-Site` or `Origin` vs `Host`), non-JSON bodies (415), bodies over `MAX_BODY_BYTES` = 16 KB (413, enforced while reading, not just from `Content-Length`), and messages that are empty or over `MAX_MESSAGE_CHARS` = 4000 (400). `previousResponseId` must match `RESPONSE_ID_PATTERN` (`resp_…`, at most 128 chars). `context` must be one of `EVE_CONTEXTS` (`'Home'`, `'Projects'`); anything else is dropped so visitor text never reaches the prompt. `ChatContext` defaults to `'Home'`; `app/projects/ArchiveCard.tsx` sets `'Projects'` when a visitor asks EVE about an archived project.
+- **Rate limits** (`lib/eve-rate-limit.ts`). 20 requests per minute per IP and 300 per hour per server instance (bounds the OpenAI bill whatever the source). A refusal is a 429 with `Retry-After`. The per-IP map is capped at 1000 entries.
+- **Upstream.** `fetch('https://api.openai.com/v1/responses', { stream: true, signal: request.signal })`, so a visitor closing the panel aborts the OpenAI call. A 400/404 that names `previous_response_id` (the stored conversation expired) becomes a 409 with `code: 'stale_conversation'`; the client clears its id and retries once without it. Other upstream failures are a generic 503 and a Sentry issue; a missing `OPENAI_API_KEY` is a 500 and a Sentry issue.
+- **Stream protocol** (`lib/eve-stream.ts`). The OpenAI SSE stream is reduced to NDJSON, one JSON object per line:
+  - `{ "type": "delta", "text": "…" }` per output-text delta;
+  - exactly one terminal line: `{ "type": "done", "responseId": "resp_…", "finalText": "…" }` on `response.completed`, or `{ "type": "error", "message": "…", "code": "failed" | "incomplete" | "disconnected" }` when the reply failed, hit the token cap, or the upstream closed without a terminal event. A failed reply never gets a `done`, so the client never stores an id it can't continue from.
+  - Response headers: `Content-Type: application/x-ndjson`, `Cache-Control: no-store`, `X-Accel-Buffering: no`.
+- **Client** (`components/ChatPanel.tsx`). Shows raw text with a caret while streaming (partial markdown would flicker), then renders the completed reply with react-markdown + remark-gfm. Tokens are revealed at a steady 40 characters per second unless `prefers-reduced-motion` is set, in which case text appears as it arrives. Errors after some text arrived are shown as a note under the partial reply.
+- **Storage** (`lib/eve-storage.ts`, localStorage, every access wrapped in try/catch): `eve_chat_history_v2` (last 50 messages) and `eve_response_id_v2` (`{ id, savedAt }`, discarded after `RESPONSE_ID_TTL_MS` = 7 days, well inside OpenAI's ~30-day retention). The pre-v2 keys in `LEGACY_STORAGE_KEYS` are removed on load. `sessionStorage` `eve_notification_shown_v2` suppresses the one-time nudge.
+- **Accessibility.** The panel is a non-modal `role="dialog"` labelled "EVE"; opening it focuses the input, Escape closes it and focus returns to the toggle; completed replies are announced once through an `aria-live="polite"` region.
+
+## CSP rules for contributors
+
+The policy is built in `lib/proxy-security.ts` (`buildCspHeader`) and set by `proxy.ts` on every response except Next's build assets (`/_next/static`, `/_next/image`) and the client router's RSC prefetches (`next-router-prefetch` header). Production: `script-src 'self' 'nonce-…' 'strict-dynamic'` plus the GA and Plausible hosts as a fallback, `style-src-elem 'self'`, `style-src-attr 'unsafe-inline'`, `font-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. Dev adds `'unsafe-eval'` and inline styles for Turbopack HMR.
+
+- **No inline `<script>` without the nonce.** Read it with `(await headers()).get('x-nonce')` in a server component and pass `nonce={nonce}`; an unnonced tag is blocked by `'strict-dynamic'`. Client components never need the nonce: their code is in Next's nonced chunks, and scripts they create at runtime (`document.createElement('script')`, as the GA loader does) are allowed by `'strict-dynamic'`.
+- **No `<style>` tags and no runtime style injection.** `style-src-elem` is `'self'` in production. Styles go in `styles/global.css` or Tailwind classes. Libraries that inject `<style>` elements can't be used (that is why the cookie banner is vanilla-cookieconsent, which ships a CSS file).
+- **Prefer classes over `style={{}}`.** Inline style attributes are allowed (`style-src-attr 'unsafe-inline'`) and some are necessary: motion animation start values and canvas-adjacent dynamic values. Don't add new ones for static styling.
+- **Every route is `force-dynamic`** (`app/layout.tsx`). Don't add `generateStaticParams`, `revalidate` or `export const dynamic = 'force-static'`: a prerendered page ships build-time nonces that won't match the request's CSP, and every script on it is blocked.
+- **New third-party hosts need a CSP entry** in the right directive (`script-src`, `connect-src`, `img-src`, …). Sentry doesn't: browser events tunnel through `/monitoring` on our origin.
+- **Don't add matcher exclusions in `proxy.ts`.** Exclusions are prefix matches, so excluding `robots.txt` would also skip `/robots.txt-anything`, whose HTML 404 would then ship without a CSP. A CSP header on a plain file is harmless, so only the build assets are excluded.
+- **Test it.** `bun run test` covers the header itself; `bun run test:e2e` loads every route under the enforced policy and fails on any `securitypolicyviolation` event or CSP console error. For risky changes deploy with `CSP_REPORT_ONLY=true` first and watch the CSP issues in Sentry.
+
+## Testing workflow
 
 ```bash
-# Clone the repo
-git clone git@github.com:nxtvanhalen/Website.git
-cd Website
-
-# Install dependencies
-bun install
-
-# Develop with hot reload
-bun run dev
-
-# …or build and run in production mode
-bun run build
-bun start
-# Visit http://localhost:3000
+bun run check        # biome ci
+bun run typecheck    # tsc --noEmit
+bun run test         # bun test tests/unit tests/integration
+bun run test:e2e     # playwright test (builds, starts on port 3100, runs tests/e2e)
 ```
 
-### Environment Variables
+- `bun test` only looks under `tests/` (`bunfig.toml`); Playwright specs end in `.e2e.ts` so bun never picks them up.
+- First e2e run on a machine: `bunx playwright install chromium`. Reuse a build with `PLAYWRIGHT_SKIP_BUILD=1 bun run test:e2e`; change the port with `PLAYWRIGHT_PORT`.
+- e2e tests never call OpenAI: `/api/chat` is mocked with `page.route` and `ndjsonReply()` from `tests/e2e/helpers.ts`, which emits exactly what the route streams. `trackPageProblems()` collects CSP violations, hydration errors and uncaught exceptions for a page.
+- Integration tests for the chat route replace `globalThis.fetch` and mock `@sentry/nextjs`; the proxy tests set `process.env` and re-import `proxy.ts` per environment variant, and check the matcher with Next's `unstable_doesMiddlewareMatch`.
+- Everything above runs in CI (`.github/workflows/ci.yml`) on every push and PR to `main`.
 
-Create `.env.local` in the project root:
+## Monitoring (Sentry)
 
-```bash
-OPENAI_API_KEY=sk-your-openai-api-key    # Required for EVE AI chat
-```
+`instrumentation-client.ts` (browser), `instrumentation.ts` → `sentry.server.config.ts` (Node), `app/global-error.tsx` (React render errors). Shared options in `sentry.shared.ts`: enabled only when `NODE_ENV === 'production'`, 10 % tracing, no Session Replay, and `dataCollection` pinned so no request bodies, cookies, IPs or user info are sent. EVE messages must never reach Sentry; keep it that way. CSP violation reports go to the same project via `report-uri` / `report-to`.
 
-### Toolchain
+## Assets
 
-The project is Bun-first. CI pins the Bun version via `.bun-version`; use the
-same locally. (The historical Node.js v22 + Next.js 14 dev-mode CSS issue no
-longer applies — that predates the Next 16 / App Router / Bun migration.)
+- Everything under `public/` must be referenced from code; remove what isn't. Strip EXIF (including GPS) from photos before committing. `.heic` / `.heif` originals are git-ignored on purpose.
+- `public/sw.js` is a self-unregistering stub that clears the old service worker's caches in returning browsers. It can be deleted around 2027-03.
+- Fonts are self-hosted by `next/font` (Chakra Petch, Newsreader, JetBrains Mono) with only the weights the site renders; adding a weight costs real bytes on every page.
 
-```bash
-bun run dev      # Development with hot reload
-bun run build    # Production build — must exit cleanly before committing
-bun start        # Serve the production build locally
-```
+## Deploy checklist
 
-### Build Verification
-
-```bash
-bun run build    # Must exit cleanly before committing
-```
-
-### Troubleshooting: Dev Server Not Binding to Port
-
-If the development server starts but does not respond on port 3000:
-
-```bash
-# Option 1: Background process method
-nohup npx next dev > next.log 2>&1 &
-sleep 3
-curl -s http://localhost:3000 | head -5
-
-# Option 2: Explicit hostname binding
-npx next dev --hostname 0.0.0.0 --port 3000
-
-# Diagnostics
-lsof -ti:3000          # Check what's listening on port 3000
-pkill -f next          # Kill existing Next.js processes
-```
-
----
-
-## Deployment
-
-### Platform: Render.com
-
-- **Auto-Deploy**: Pushes to `main` branch trigger automatic deployment
-- **Domain**: `chrisleebergstrom.com` (live production)
-- **Git Integration**: Connected directly to `nxtvanhalen/Website` repository
-- **Workflow**: Code change -> Git push -> Auto deploy -> Live site
-
-### Build Configuration (Render)
-
-- **Build Command**: `bun install && bun run build`
-- **Start Command**: `bun start`
-- **Environment Variables**: `OPENAI_API_KEY` must be set in Render dashboard. Optional: `SENTRY_AUTH_TOKEN` (enables source-map upload so Sentry stack traces point at real source)
-
-### Error Monitoring (Sentry)
-
-- **Project**: `clb-consulting/clb-website` — https://clb-consulting.sentry.io/issues/?project=clb-website
-- **Setup**: `instrumentation-client.ts` (browser), `instrumentation.ts` + `sentry.server.config.ts` (server), `app/global-error.tsx` (React render errors). Shared options live in `sentry.shared.ts`.
-- **Production only**: `enabled` is gated on `NODE_ENV === 'production'`, so `bun run dev` never reports.
-- **Privacy**: SDK v11 collects request bodies/cookies/user info unless told otherwise; `sentry.shared.ts` pins the restrictive baseline (no bodies — EVE chat messages never leave the server, no IPs, no cookies). Keep it that way.
-- **Tunnel**: browser events go to `/monitoring` on our own origin (survives ad blockers, keeps CSP `connect-src 'self'`). `proxy.ts` excludes `/monitoring` from its matcher.
-- **CSP reports**: `report-uri` in `proxy.ts` sends CSP violations to the same Sentry project.
-- **EVE chat**: `/api/chat` captures upstream/OpenAI failures explicitly (visitor input errors are not reported).
-
-### Deployment Troubleshooting
-
-- **Corrupted Build Cache**: Use Render's "Clear build cache & deploy" option
-- **TypeScript Errors**: Ensure proper null checks — `npm run build` must pass cleanly before pushing
-- **Missing Assets**: Verify all images/videos are committed to `public/` before pushing
-
----
-
-## Progressive Web App (PWA)
-
-- **Manifest**: `public/manifest.json` with full icon set
-- **Icons**: Complete set in `public/images/Favicon/` — favicon.ico, 16x16, 32x32, 180x180 (Apple touch), 192x192, 512x512 (Android)
-- **Service Worker**: `public/sw.js` with offline support and intelligent caching
-- **Theme Color**: `#9370DB` (purple) — consistent across all pages for mobile status bar
-
----
-
-## Mobile Considerations
-
-### Safe Area Handling
-
-- Purple background extends into mobile notch/safe-area using `env(safe-area-inset-top)` in header padding
-- All pages use `#9370DB` theme-color meta tag for consistent mobile status bar
-
-### Chat Keyboard Handling
-
-- **Auto-recentering**: When mobile keyboard dismisses, chat smoothly scrolls back into view
-- **Smart Detection**: Only triggers when user was actively using the chat input (prevents unwanted scrolling on other interactions)
-- **Viewport Monitoring**: Uses `window.visualViewport` to detect keyboard show/hide (150px threshold)
-- **Scroll Target**: Recenters to `eve-ai-heading` element with 120px offset above
-
-### Responsive Design
-
-- All pages have `minHeight: '120vh'` for consistent purple overflow area on mobile
-- Navigation font sizes scale: 1.4rem (desktop) / 1.1rem (mobile)
-- Profile pictures resize: 128px (desktop) / 96px (mobile)
-
----
-
-## Future Expansion
-
-The current architecture supports scaling into:
-
-- **Content Management**: Blog/insights section (Substack integration already in place)
-- **Lead Generation**: Email capture, assessments, case studies
-- **Client Portal**: Private project areas
-- **A/B Testing**: CTA optimization (infrastructure already in place via GA4 event tracking)
-- **Additional Services**: More CTA pages using the `docs/CTA-PAGE-TEMPLATE.md` blueprint
-- **Database Integration**: PostgreSQL/Redis when persistent storage is needed
-- **Additional AI Features**: Multi-agent capabilities, enhanced EVE interactions
-
----
-
-## Related Documentation
-
-| Document | Purpose |
-|---|---|
-| `docs/GPT5_MIGRATION.md` | Complete technical guide for the GPT-5 Responses API migration |
-| `docs/CTA-PAGE-TEMPLATE.md` | Full blueprint for building new service CTA pages |
+1. CI green on the branch (`check`, `build`, `e2e`).
+2. New environment variables set in Render before the deploy (`.env.example` is the list).
+3. For a CSP change, `CSP_REPORT_ONLY=true` on the first deploy; remove it once Sentry shows no unexpected reports.
+4. Merge to `main`. Auto-deploy is off: trigger the deploy from the Render dashboard or the Render CLI and wait for it to go live.
+5. Verify in production: the home page returns `Content-Security-Policy` with `'strict-dynamic'` (`curl -sI https://chrisleebergstrom.com | grep -i content-security`), the pages load without console errors, EVE answers, Sentry stays quiet.
+6. If content on a route changed, bump its date in `app/sitemap.ts`.

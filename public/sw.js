@@ -8,8 +8,7 @@
 // On install it activates immediately; on activate it wipes every cache, unregisters
 // itself, and reloads any open tabs so they load straight from the network.
 //
-// Safe to delete after about 2027-03 (a year after the registration was removed). When
-// you do, also drop `sw.js` from the matcher in proxy.ts.
+// Safe to delete after about 2027-03 (a year after the registration was removed).
 
 self.addEventListener('install', () => {
   self.skipWaiting();

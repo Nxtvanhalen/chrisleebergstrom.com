@@ -21,7 +21,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentContext, setContext] = useState<EveContext>('Home');
 
   // Stable callbacks + memoised value so consumers that list them as effect
-  // dependencies (ProjectsClient, PersistentChat) don't re-run every render.
+  // dependencies (ArchiveCard, PersistentChat) don't re-run every render.
   const openChat = useCallback(() => setIsOpen(true), []);
   const closeChat = useCallback(() => setIsOpen(false), []);
   const toggleChat = useCallback(() => setIsOpen((prev) => !prev), []);

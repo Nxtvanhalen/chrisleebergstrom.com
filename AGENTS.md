@@ -1,0 +1,65 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+# Project guide for AI coding agents
+
+Everything below is maintained by hand; the block above is managed by `next dev`.
+
+## What this is
+
+chrisleebergstrom.com: a Next.js 16 App Router personal site with a per-request nonce CSP and EVE, an OpenAI-backed chat concierge. Human-readable docs: `README.md`, `docs/DEVELOPMENT.md` (conventions, EVE internals, CSP rules), `docs/CSP-AND-NEXTJS-ROADMAP.md` (why the CSP is built this way and the gotchas).
+
+## Commands (Bun 1.4.2, see `.bun-version`)
+
+```bash
+bun run check       # biome ci — lint + format, what CI runs (bun run lint:fix to fix)
+bun run typecheck   # tsc --noEmit
+bun run test        # bun test tests/unit tests/integration
+bun run test:e2e    # Playwright + axe against a production build (PLAYWRIGHT_SKIP_BUILD=1 to reuse .next)
+bun run build       # must pass before a PR
+```
+
+All four checks run in CI on every push and PR to `main`. Run them before declaring work done.
+
+## Conventions
+
+- Routes are `async` server components in `app/<route>/page.tsx`; interactive parts go in a sibling `'use client'` component. `<Reveal>` is the only animation wrapper, so sections stay server components. The home sections are rendered from `app/page.tsx` as children of `IndexClient`; never import them into `IndexClient` (that pulls them into the client bundle).
+- Reuse the shared components: `PageHero`, `PageCta`, `SectionHeading`, `DetailRow`, `ProjectCard`, `SocialLinks`. Project records live in `lib/projects.ts`, contact details in `lib/site.ts`, the share image in `app/og-image.ts`.
+- Import with `@/`. Theme tokens are in `styles/global.css` (`@theme`: `mauve`, `cream`, …); use the Tailwind utilities, and `lib/theme.ts` only for canvas and motion values.
+- `lib/` is pure logic (no Next, Sentry, `window` or `process.env`) with a test in `tests/unit/`. Keep it that way; put new logic there, not in route handlers.
+- A new page needs `metadata` (with `openGraph.images: OG_IMAGES`), nonced JSON-LD, `<main id="main-content" tabIndex={-1}>` with exactly one `h1`, and an entry in `app/sitemap.ts` (the e2e suite reads its routes from there).
+- Biome formats: single quotes, semicolons, trailing commas, 100 columns.
+
+## CSP rules (non-negotiable)
+
+- Never add an inline `<script>` without the nonce: `const nonce = (await headers()).get('x-nonce') ?? undefined;` then `nonce={nonce}`. `'strict-dynamic'` blocks unnonced tags.
+- Never add `<style>` tags or libraries that inject styles at runtime (`style-src-elem` is `'self'`). Prefer theme classes over `style={{}}` attributes; add inline styles only for values that genuinely must be dynamic.
+- Don't make routes static (`force-static`, `revalidate`, `generateStaticParams`); every route is `force-dynamic` so framework scripts carry the request's nonce.
+- A new third-party host needs an entry in `buildCspHeader` (`lib/proxy-security.ts`) plus a unit test. Sentry needs none (it tunnels via `/monitoring`).
+- Non-CSP security headers live in `next.config.js`; don't move them.
+- Don't add paths to the matcher exclusions in `proxy.ts`. Exclusions are prefix matches (excluding `robots.txt` would also skip `/robots.txt-anything`, whose HTML 404 would then ship without a CSP); only `_next/static` and `_next/image` are excluded, and a CSP header on a plain file is harmless.
+
+## EVE
+
+- The system prompt is `EVE_SYSTEM_PROMPT` in `app/api/chat/route.ts`. It may only describe the public projects on the site; it must never name internal, unreleased or employer work. Model and caps: `EVE_MODEL`, `MAX_OUTPUT_TOKENS`, the rate limiter options in the same file.
+- Request validation is in `lib/eve-validation.ts` (`EVE_CONTEXTS` allowlist, size and id checks); the NDJSON stream protocol in `lib/eve-stream.ts`; localStorage keys in `lib/eve-storage.ts`. Change the stored shape → bump the key suffix and add the old key to `LEGACY_STORAGE_KEYS`.
+- Tests mock `/api/chat`; never add a test that calls OpenAI.
+
+## Secrets, privacy, assets
+
+- Never commit `.env*` files or paste keys into code or docs; `.env.example` is the only tracked env file and holds no values. Secrets are `OPENAI_API_KEY` and `SENTRY_AUTH_TOKEN`; the Sentry DSN, GA id and Plausible URL are public on purpose.
+- Keep Sentry's `dataCollection` in `sentry.shared.ts` restrictive: no request bodies, cookies or IPs. Visitor chat messages must never be logged or reported.
+- Everything in `public/` must be referenced from code, or removed. Strip EXIF metadata (GPS especially) from any image before adding it; no `.heic`/`.heif` originals.
+- Don't touch `public/sw.js` except to delete it after 2027-03.
+
+## Workflow
+
+- Don't commit or push unless asked; never commit the generated `next-env.d.ts`.
+- Deploys are manual on Render (auto-deploy is off). `CSP_REPORT_ONLY=true` is the safe way to roll out a CSP change.

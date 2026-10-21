@@ -11,7 +11,7 @@ export const MAX_MESSAGE_CHARS = 4000;
 export const MAX_RESPONSE_ID_CHARS = 128;
 
 // Section names the client may report as "where the visitor is". Keep in sync
-// with every `setContext(...)` call site (ChatContext default + ProjectsClient).
+// with every `setContext(...)` call site (ChatContext default + app/projects/ArchiveCard.tsx).
 // Anything else is dropped so visitor-controlled text never reaches the prompt.
 export const EVE_CONTEXTS = ['Home', 'Projects'] as const;
 export type EveContext = (typeof EVE_CONTEXTS)[number];
