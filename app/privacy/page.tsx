@@ -24,8 +24,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'Privacy | Chris Lee Bergstrom',
     description:
       'Privacy policy for chrisleebergstrom.com — how we collect, use, and protect your information. CLB Consulting is the legal entity that owns this site.',

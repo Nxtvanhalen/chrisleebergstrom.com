@@ -494,7 +494,7 @@ export default function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={
-            busy ? 'EVE is responding…' : 'Ask me anything about AI, consulting, or development...'
+            busy ? 'EVE is responding…' : "Ask about Chris's work, projects, or how to reach him…"
           }
           disabled={busy}
           aria-label="Message EVE"

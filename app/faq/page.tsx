@@ -21,8 +21,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'FAQ | Chris Lee Bergstrom',
     description:
       'Common questions about working with Chris Lee Bergstrom — AI development, live-entertainment software, and consulting.',

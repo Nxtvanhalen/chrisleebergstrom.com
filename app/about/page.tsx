@@ -40,8 +40,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'About | Chris Lee Bergstrom',
     description:
       'Origin story: 20 years in live entertainment — front of house, tour management, technical direction. Now building the software.',

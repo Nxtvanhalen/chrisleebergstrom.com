@@ -22,8 +22,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'News | Chris Lee Bergstrom',
     description: 'Press coverage, podcast appearances, and credits featuring Chris Lee Bergstrom.',
   },

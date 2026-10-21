@@ -26,8 +26,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'Projects | Chris Lee Bergstrom',
     description:
       'Selected work from Chris Lee Bergstrom: agentic AI tools, entertainment-tech systems, and live-events software.',

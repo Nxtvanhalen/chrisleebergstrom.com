@@ -50,8 +50,6 @@ export const metadata: Metadata = {
   // twitter.images is auto-filled from openGraph.images by Next.
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'Chris Lee Bergstrom — AI Developer + Live Entertainment',
     description:
       'AI developer with 20 years in live entertainment. Building agentic software for venues, tours, and live events.',

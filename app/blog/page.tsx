@@ -20,8 +20,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@chrisleebergstrom',
-    creator: '@chrisleebergstrom',
     title: 'Musings | Chris Lee Bergstrom',
     description:
       'Notes on agentic AI, live entertainment tech, and systems thinking from Chris Lee Bergstrom.',
