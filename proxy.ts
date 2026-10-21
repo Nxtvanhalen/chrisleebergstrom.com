@@ -75,17 +75,16 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static assets and metadata files (CSP irrelevant; saves nonce generation).
-  // The `missing` clause skips prefetch-only requests so we don't waste nonces on
-  // RSC payload prefetches that don't render HTML.
+  // Skip only Next's build assets. Matcher exclusions are prefixes, so excluding
+  // e.g. `robots.txt` would also skip `/robots.txt-anything`, whose HTML 404 would
+  // then ship without a CSP; a CSP header on a plain file is harmless.
+  // The `missing` clause skips the client router's RSC prefetches, which never
+  // render HTML. Browser prefetches (`Purpose: prefetch`) are NOT skipped: they
+  // fetch real documents that may later be used for navigation.
   matcher: [
     {
-      source:
-        '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|site.webmanifest|sw.js|static|monitoring).*)',
-      missing: [
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
-      ],
+      source: '/((?!_next/static|_next/image).*)',
+      missing: [{ type: 'header', key: 'next-router-prefetch' }],
     },
   ],
 };

@@ -1,13 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useRef } from 'react';
-import Contact from '@/components/Contact';
-import History from '@/components/History';
-import Method from '@/components/Method';
-import OffTheClock from '@/components/OffTheClock';
-import SelectedWork from '@/components/SelectedWork';
-import Skills from '@/components/Skills';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { MAUVE, mauve } from '@/lib/theme';
 
 type Node = {
@@ -255,7 +249,9 @@ function useKineticName(nameRef: React.RefObject<HTMLElement | null>) {
   }, [nameRef, reducedMotion]);
 }
 
-export default function IndexClient() {
+// The sections below the hero arrive as children from app/page.tsx: anything
+// imported here would be pulled into the client bundle, server component or not.
+export default function IndexClient({ children }: { children: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nameRef = useRef<HTMLSpanElement>(null);
 
@@ -335,12 +331,7 @@ export default function IndexClient() {
           </motion.div>
         </section>
 
-        <SelectedWork />
-        <Method />
-        <Skills />
-        <History />
-        <OffTheClock />
-        <Contact />
+        {children}
       </main>
     </div>
   );

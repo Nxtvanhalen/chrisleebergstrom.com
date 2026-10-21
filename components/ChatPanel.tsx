@@ -303,9 +303,10 @@ export default function ChatPanel() {
       // A stale previous_response_id (OpenAI expires them) is the usual reason a
       // send fails once a conversation is a few days old. Drop the id and retry
       // once without it; the visitor just loses EVE's memory of earlier turns.
+      // Other failures (outages, rate limits) keep the id so memory survives them.
       if (!res.ok && responseId) {
         const err = await readError(res);
-        if (err.code === 'stale_conversation' || res.status >= 500) {
+        if (err.code === 'stale_conversation') {
           clearResponseId();
           res = await post(null);
         } else {

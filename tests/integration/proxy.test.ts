@@ -1,3 +1,4 @@
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
 // Exercises proxy() (the Next.js middleware) with hand-built NextRequests.
 //
 // proxy.ts reads BLOCKED_IPS / BLOCKED_IP_PREFIXES / CSP_REPORT_ONLY once at
@@ -125,18 +126,28 @@ describe('proxy() — default environment', () => {
     expect(res.status).toBe(200);
   });
 
-  test('the matcher skips static assets and the Sentry tunnel', async () => {
+  test('the matcher skips only build assets and router prefetches', async () => {
     const { config } = await loadProxy();
-    const source = JSON.stringify(config.matcher);
-    for (const excluded of [
-      '_next/static',
-      '_next/image',
-      'sitemap.xml',
-      'robots.txt',
-      'monitoring',
+    const matches = (url: string, headers?: Record<string, string>) =>
+      unstable_doesMiddlewareMatch({ config, url, headers });
+
+    expect(matches('/_next/static/chunks/main.js')).toBe(false);
+    expect(matches('/_next/image?url=%2Fimages%2Fx.webp&w=640&q=75')).toBe(false);
+    expect(matches('/', { 'next-router-prefetch': '1' })).toBe(false);
+
+    // Prefix look-alikes render the HTML 404 and must still get a CSP.
+    for (const url of [
+      '/',
+      '/about',
+      '/robots.txt',
+      '/robots.txt-x',
+      '/static-x',
+      '/monitoring-x',
     ]) {
-      expect(source).toContain(excluded);
+      expect(matches(url)).toBe(true);
     }
+    // Browser prefetches fetch real documents, so they are not skipped.
+    expect(matches('/about', { purpose: 'prefetch' })).toBe(true);
   });
 });
 

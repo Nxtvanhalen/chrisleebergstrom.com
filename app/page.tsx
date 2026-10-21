@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import Contact from '@/components/Contact';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import History from '@/components/History';
+import Method from '@/components/Method';
+import OffTheClock from '@/components/OffTheClock';
+import SelectedWork from '@/components/SelectedWork';
+import Skills from '@/components/Skills';
 import IndexClient from './IndexClient';
 import { OG_IMAGES } from './og-image';
 
@@ -299,7 +305,14 @@ export default async function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(landingSchema) }}
       />
       <Header />
-      <IndexClient />
+      <IndexClient>
+        <SelectedWork />
+        <Method />
+        <Skills />
+        <History />
+        <OffTheClock />
+        <Contact />
+      </IndexClient>
       <Footer />
     </>
   );

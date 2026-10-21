@@ -33,23 +33,29 @@ export default function PersistentChat() {
   const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (hasShownNotification() || isOpen) return;
+    // Opening the chat makes the nudge pointless, and cancelling its hide timer
+    // below would otherwise leave it on screen for good.
+    if (isOpen) {
+      setShowNotification(false);
+      return;
+    }
+    if (hasShownNotification()) return;
 
     // Delay slightly for effect (reduced to 1s)
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => {
       setShowNotification(true);
       markNotificationShown();
-
-      // Auto-hide after 5 seconds
-      hideTimer = setTimeout(() => setShowNotification(false), 5000);
     }, 1000);
 
-    return () => {
-      clearTimeout(timer);
-      if (hideTimer) clearTimeout(hideTimer);
-    };
+    return () => clearTimeout(timer);
   }, [isOpen]);
+
+  // Auto-hide the nudge after 5 seconds, independent of the effect above.
+  useEffect(() => {
+    if (!showNotification) return;
+    const hideTimer = setTimeout(() => setShowNotification(false), 5000);
+    return () => clearTimeout(hideTimer);
+  }, [showNotification]);
 
   // When the panel closes, put focus back on the control that opens it (WCAG
   // 2.4.3) instead of letting the browser drop it on <body>. ChatPanel handles
