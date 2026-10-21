@@ -36,9 +36,9 @@ export default defineConfig({
     timeout: 300_000,
     env: {
       PORT: String(PORT),
-      // The chat route only checks that a key exists before it calls OpenAI;
+      // The chat route only checks that a key exists before it calls DeepSeek;
       // every e2e spec mocks /api/chat, so a placeholder is enough.
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? 'placeholder',
+      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? 'placeholder',
     },
   },
 });

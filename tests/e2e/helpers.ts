@@ -71,8 +71,14 @@ export function focusIsWithin(page: Page, selector: string): Promise<boolean> {
 }
 
 // One NDJSON reply exactly as app/api/chat/route.ts streams it.
-export function ndjsonReply(deltas: string[], responseId = 'resp_e2e123'): string {
+export function ndjsonReply(deltas: string[]): string {
   const lines = deltas.map((text) => JSON.stringify({ type: 'delta', text }));
-  lines.push(JSON.stringify({ type: 'done', responseId, finalText: deltas.join('') }));
+  lines.push(JSON.stringify({ type: 'done', finalText: deltas.join('') }));
   return `${lines.join('\n')}\n`;
 }
+
+// The body the chat panel POSTs to /api/chat.
+export type ChatRequestBody = {
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  context?: string;
+};

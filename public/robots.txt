@@ -1,35 +1,18 @@
+# Every crawler, AI crawlers included, is welcome to the content. Build output
+# and API routes aren't content. Rules only apply within their own group, so
+# the named crawlers share this group instead of getting empty ones.
 User-agent: *
-Allow: /
-
-# Welcome AI crawlers specifically for discoverability
 User-agent: GPTBot
-Allow: /
-
-User-agent: Claude-Web
-Allow: /
-
 User-agent: ChatGPT-User
-Allow: /
-
-User-agent: CCBot
-Allow: /
-
+User-agent: Claude-Web
 User-agent: anthropic-ai
-Allow: /
-
+User-agent: CCBot
 User-agent: Perplexity
-Allow: /
-
 User-agent: Bard
-Allow: /
-
 User-agent: Bing
-Allow: /
-
-# Only block technical/build folders that aren't useful content
 Disallow: /_next/
 Disallow: /api/
-Disallow: /node_modules/
+Allow: /
 
 # Sitemap location for search engines
 Sitemap: https://chrisleebergstrom.com/sitemap.xml

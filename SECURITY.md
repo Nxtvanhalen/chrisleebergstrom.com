@@ -16,7 +16,7 @@ Include what you found, how to reproduce it, and what impact you think it has. Y
 Out of scope:
 
 - The separately hosted projects the site links to (The Underground, Byte, Beacons, Fuel Estimator) — they have their own repositories.
-- Third-party services the site uses (Render, Sentry, Plausible, Google Analytics, Substack, OpenAI).
+- Third-party services the site uses (Render, Sentry, Plausible, Google Analytics, Substack, DeepSeek).
 - Volume-based denial of service, and automated-scanner output without a demonstrated impact.
 
 ## What's intentionally public
@@ -27,4 +27,4 @@ These identifiers are in the source on purpose and are not secrets:
 - The Google Analytics measurement ID (`components/CookieConsentLoader.tsx`) and the Plausible script URL (`app/layout.tsx`).
 - The Google Search Console verification file (`public/google8c87f62b78695236.html`).
 
-Real secrets (`OPENAI_API_KEY`, `SENTRY_AUTH_TOKEN`) live only in the environment; see `.env.example` for the full list of variables the code reads.
+Real secrets (`DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN`) live only in the environment; see `.env.example` for the full list of variables the code reads.

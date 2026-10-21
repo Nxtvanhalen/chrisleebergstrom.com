@@ -1,5 +1,5 @@
 // In-memory rate limiter for the EVE chat route: a fixed window per client IP
-// plus a process-wide fixed window that caps total OpenAI spend no matter how
+// plus a process-wide fixed window that caps total model spend no matter how
 // many addresses are hitting us. State lives in the module instance, so on a
 // multi-instance deploy each instance enforces its own budget.
 //

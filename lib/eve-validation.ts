@@ -1,14 +1,22 @@
 // Pure request-validation helpers for the EVE chat route. No framework, Sentry
 // or browser imports so every function here can be unit-tested directly; the
-// route handler decides which HTTP status each failure maps to.
+// route handler decides which HTTP status each failure maps to. `trimHistory`
+// is also used by the chat panel, so client and server trim the same way.
 
-// Hard cap on the raw request body. A 4000-char message plus a response id and
-// context fits in ~5 KB even as multi-byte UTF-8; 16 KB leaves slack without
-// letting a client make us buffer megabytes before we even parse.
-export const MAX_BODY_BYTES = 16 * 1024;
+// Hard cap on the raw request body. The client sends at most MAX_HISTORY_CHARS
+// of conversation (plus JSON overhead and multi-byte UTF-8); 64 KB leaves slack
+// without letting a client make us buffer megabytes before we even parse.
+export const MAX_BODY_BYTES = 64 * 1024;
 export const MAX_MESSAGE_CHARS = 4000;
-// OpenAI response ids are ~50 chars today; the cap only guards against abuse.
-export const MAX_RESPONSE_ID_CHARS = 128;
+// How much conversation goes upstream with each request. DeepSeek is stateless,
+// so the client resends recent turns; these caps bound the input tokens (and so
+// the cost) of every call no matter how long a visitor keeps chatting. The
+// server trims again rather than trusting the client.
+export const MAX_HISTORY_MESSAGES = 16;
+export const MAX_HISTORY_CHARS = 16_000;
+// What the server accepts before trimming: generous, but a list longer than
+// this is not something our client sends.
+const MAX_RECEIVED_MESSAGES = 60;
 
 // Section names the client may report as "where the visitor is". Keep in sync
 // with every `setContext(...)` call site (ChatContext default + app/projects/ArchiveCard.tsx).
@@ -20,21 +28,10 @@ export function isEveContext(value: unknown): value is EveContext {
   return typeof value === 'string' && (EVE_CONTEXTS as readonly string[]).includes(value);
 }
 
-// Shape of an OpenAI Responses API id. Shared with the client-side storage code
-// so a corrupted localStorage value is discarded before it is ever sent.
-export const RESPONSE_ID_PATTERN = /^resp_[A-Za-z0-9]+$/;
-
-export function isValidResponseId(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length <= MAX_RESPONSE_ID_CHARS &&
-    RESPONSE_ID_PATTERN.test(value)
-  );
-}
+export type HistoryMessage = { role: 'user' | 'assistant'; content: string };
 
 export type ChatRequest = {
-  prompt: string;
-  previousResponseId: string | null;
+  messages: HistoryMessage[];
   context: EveContext | null;
 };
 
@@ -54,6 +51,36 @@ export function validateUserMessage(message: unknown): string | null {
   return null;
 }
 
+/**
+ * Keeps the most recent turns that fit both caps, always ending on the newest
+ * message and always starting on a user turn (a leading assistant reply with no
+ * question before it only confuses the model). Shared by the client, which trims
+ * before sending, and the server, which trims again.
+ */
+export function trimHistory<T extends HistoryMessage>(
+  messages: readonly T[],
+  maxMessages = MAX_HISTORY_MESSAGES,
+  maxChars = MAX_HISTORY_CHARS,
+): T[] {
+  const kept: T[] = [];
+  let chars = 0;
+  for (let i = messages.length - 1; i >= 0 && kept.length < maxMessages; i--) {
+    const message = messages[i];
+    // The newest message is always kept; it has already passed the length check.
+    if (kept.length > 0 && chars + message.content.length > maxChars) break;
+    kept.unshift(message);
+    chars += message.content.length;
+  }
+  while (kept.length > 1 && kept[0].role !== 'user') kept.shift();
+  return kept;
+}
+
+function isHistoryMessage(value: unknown): value is HistoryMessage {
+  if (typeof value !== 'object' || value === null) return false;
+  const msg = value as Record<string, unknown>;
+  return (msg.role === 'user' || msg.role === 'assistant') && typeof msg.content === 'string';
+}
+
 // Parses and validates the already-size-capped body text. Malformed JSON and
 // non-object bodies are ordinary client errors, not exceptions.
 export function parseChatRequest(raw: string): ValidationResult<ChatRequest> {
@@ -68,27 +95,35 @@ export function parseChatRequest(raw: string): ValidationResult<ChatRequest> {
   }
   const body = parsed as Record<string, unknown>;
 
-  const messageError = validateUserMessage(body.prompt);
+  const list = body.messages;
+  if (!Array.isArray(list) || list.length === 0) {
+    return { ok: false, error: 'messages must be a non-empty array' };
+  }
+  if (list.length > MAX_RECEIVED_MESSAGES) {
+    return { ok: false, error: `messages may hold at most ${MAX_RECEIVED_MESSAGES} entries` };
+  }
+  if (!list.every(isHistoryMessage)) {
+    return { ok: false, error: 'Each message needs a role (user or assistant) and string content' };
+  }
+  const last = list[list.length - 1] as HistoryMessage;
+  if (last.role !== 'user') {
+    return { ok: false, error: 'The last message must be from the user' };
+  }
+  const messageError = validateUserMessage(last.content);
   if (messageError) {
     return { ok: false, error: messageError };
   }
 
-  // null, undefined and '' all mean "no prior turn"; anything else must look
-  // like a real response id or we refuse rather than forward garbage upstream.
-  let previousResponseId: string | null = null;
-  const rawId = body.previousResponseId;
-  if (rawId != null && rawId !== '') {
-    if (!isValidResponseId(rawId)) {
-      return { ok: false, error: 'Previous response ID is malformed' };
-    }
-    previousResponseId = rawId;
-  }
+  // Earlier turns are only trimmed and capped: an over-long or empty one is
+  // dropped rather than failing a request the visitor can't fix.
+  const earlier = (list.slice(0, -1) as HistoryMessage[])
+    .map((m) => ({ role: m.role, content: m.content.trim() }))
+    .filter((m) => m.content.length > 0 && m.content.length <= MAX_MESSAGE_CHARS);
 
   return {
     ok: true,
     value: {
-      prompt: (body.prompt as string).trim(),
-      previousResponseId,
+      messages: trimHistory([...earlier, { role: 'user', content: last.content.trim() }]),
       context: isEveContext(body.context) ? body.context : null,
     },
   };

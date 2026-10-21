@@ -11,12 +11,12 @@ Personal site of Chris Lee Bergstrom, and EVE, an AI concierge you can talk to.
 
 ## What this is
 
-The production site for Chris Lee Bergstrom, an AI developer with twenty years in live entertainment. It is a Next.js 16 App Router app with a strict, per-request-nonce Content Security Policy, and it ships EVE, a site-scoped assistant that streams replies from the OpenAI Responses API. The implementation is worth reading if you want a small, real-world example of a nonce CSP on the App Router, a validated and rate-limited LLM endpoint, and accessibility checks that run in CI on every route.
+The production site for Chris Lee Bergstrom, an AI developer with twenty years in live entertainment. It is a Next.js 16 App Router app with a strict, per-request-nonce Content Security Policy, and it ships EVE, a site-scoped assistant that streams replies from DeepSeek. The implementation is worth reading if you want a small, real-world example of a nonce CSP on the App Router, a validated and rate-limited LLM endpoint, and accessibility checks that run in CI on every route.
 
 ## Highlights
 
 - **Nonce CSP on every response.** `proxy.ts` generates a nonce per request and sets `script-src 'self' 'nonce-…' 'strict-dynamic'` on everything except Next's build assets (`/_next/static`, `/_next/image`): pages, API responses, 403s and allowlisted crawlers alike. Every route renders dynamically so framework scripts carry the nonce; violations are reported to Sentry through `report-uri` and `report-to`.
-- **EVE streams, with guardrails.** `/api/chat` calls the OpenAI Responses API directly with `fetch` (no SDK), relays the SSE stream as NDJSON, and refuses cross-site, non-JSON, oversized (16 KB) and malformed requests. Rate limits: 20 requests/minute per IP and 300/hour per instance; replies are capped at 800 output tokens, and the upstream call is cancelled when the visitor leaves.
+- **EVE streams, with guardrails.** `/api/chat` calls DeepSeek's OpenAI-compatible Chat Completions API directly with `fetch` (no SDK), relays the SSE stream as NDJSON, and refuses cross-site, non-JSON, oversized (64 KB) and malformed requests. The model is stateless, so the client resends recent turns and both sides trim them to 16 messages / 16,000 characters, which bounds the cost of every call. Rate limits: 20 requests/minute per IP and 300/hour per instance; replies are capped at 800 output tokens; a stalled upstream times out; the upstream call is cancelled when the visitor leaves.
 - **Accessibility checked in CI.** Playwright runs axe (WCAG 2.1 A/AA rules) on every route in the sitemap against a production build and fails on serious or critical violations. The menu drawer, FAQ accordion, chat dialog and skip link have keyboard tests.
 - **Sentry with PII collection off.** No request bodies, cookies or IPs leave the server (`sentry.shared.ts`); browser events tunnel through `/monitoring` on the site's own origin.
 - **Privacy-first analytics.** Google Analytics loads only after consent (vanilla-cookieconsent); withdrawing consent erases its cookies. Plausible runs cookieless.
@@ -36,13 +36,13 @@ flowchart LR
 sequenceDiagram
   participant C as ChatPanel (client)
   participant R as /api/chat (route.ts)
-  participant O as OpenAI Responses API
-  C->>R: POST JSON (prompt, previousResponseId?, context?)
-  R->>R: same-origin, content-type, rate limit, body cap, validation
-  R->>O: POST /v1/responses, stream: true
-  O-->>R: SSE events
+  participant D as DeepSeek Chat Completions
+  C->>R: POST JSON (recent messages, context?)
+  R->>R: same-origin, content-type, rate limit, body cap, validation, trim history
+  R->>D: POST /chat/completions, stream: true, thinking disabled
+  D-->>R: SSE chunks
   R-->>C: NDJSON lines: delta… then done or error
-  C->>C: reveal text, then render markdown; store responseId
+  C->>C: save transcript, reveal text, render markdown
 ```
 
 The CSP design, the Next.js migration it required and the gotchas hit along the way are written up in [docs/CSP-AND-NEXTJS-ROADMAP.md](docs/CSP-AND-NEXTJS-ROADMAP.md). Conventions and the EVE internals are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
@@ -64,7 +64,7 @@ The CSP design, the Next.js migration it required and the gotchas hit along the 
 | Chat rendering | react-markdown, remark-gfm | 10, 4 |
 | RSS parsing | fast-xml-parser | 5 |
 | Cookie consent | vanilla-cookieconsent | 3 |
-| AI | OpenAI Responses API via `fetch`, model `gpt-5-nano-2025-08-07` | – |
+| AI | DeepSeek Chat Completions via `fetch`, model `deepseek-flash` (V4.1 Flash, non-thinking) | – |
 | Analytics | Google Analytics 4 (consent-gated), Plausible (cookieless) | – |
 | Hosting | Render web service | – |
 
@@ -99,7 +99,7 @@ Requires Bun 1.4.3 (`.bun-version`).
 
 ```bash
 bun install
-cp .env.example .env.local      # then set OPENAI_API_KEY for EVE
+cp .env.example .env.local      # then set DEEPSEEK_API_KEY for EVE
 bun run dev                     # http://localhost:3000
 ```
 
@@ -131,7 +131,7 @@ From `.env.example`; git ignores every other `.env*` file.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | Yes (for EVE) | Server-side key used by `app/api/chat/route.ts`. The build never calls OpenAI; CI uses a placeholder. |
+| `DEEPSEEK_API_KEY` | Yes (for EVE) | Server-side key used by `app/api/chat/route.ts`. The build never calls DeepSeek; CI uses a placeholder. |
 | `SENTRY_AUTH_TOKEN` | No | Source-map upload during `next build`. Unset, the build still succeeds. |
 | `NEXT_PUBLIC_SENTRY_ENV` | No | Environment tag on Sentry events (defaults to `production`). |
 | `CSP_REPORT_ONLY` | No | `true` sends the policy as `Content-Security-Policy-Report-Only`; anything else enforces. |
@@ -143,7 +143,7 @@ From `.env.example`; git ignores every other `.env*` file.
 ## Testing
 
 - **Unit** (`tests/unit`, `bun test`): the pure modules in `lib/`: request validation, the SSE-to-NDJSON reducer and stream, the rate limiter, chat storage (de)serialisation, CSP construction and request classification, Substack feed parsing.
-- **Integration** (`tests/integration`, `bun test`): `proxy.ts` end to end for each environment variant (default, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES`, `CSP_REPORT_ONLY`), its matcher via Next's `unstable_doesMiddlewareMatch`, and `POST /api/chat` with a mocked OpenAI, covering every refusal path (403, 415, 413, 400, 429), the stale-conversation 409 and a healthy relay.
+- **Integration** (`tests/integration`, `bun test`): `proxy.ts` end to end for each environment variant (default, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES`, `CSP_REPORT_ONLY`), its matcher via Next's `unstable_doesMiddlewareMatch`, and `POST /api/chat` with a mocked DeepSeek, covering every refusal path (403, 415, 413, 400, 429), upstream failures and timeouts, and a healthy relay.
 - **End-to-end** (`tests/e2e`, Playwright, Chromium, against `next build && next start`): for every route in `app/sitemap.ts`: a 200, one `h1`, a `main` landmark, the enforced CSP header, no CSP violations or hydration errors in the console, and no serious or critical axe violations. Plus the EVE panel with `/api/chat` mocked, the menu drawer, the skip link, the FAQ accordion and the 404 page.
 
 At the time of writing that is 124 unit and integration tests and 34 e2e tests. CI (`.github/workflows/ci.yml`) runs `check` → `typecheck` → `test` first, then `build` and the e2e job in parallel; the Playwright report is uploaded as an artifact when e2e fails.
@@ -152,7 +152,7 @@ At the time of writing that is 124 unit and integration tests and 34 e2e tests. 
 
 Request filtering and the CSP live in `proxy.ts` and `lib/proxy-security.ts`; the chat endpoint's validation in `lib/eve-validation.ts`. Other security headers (HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) are set in `next.config.js`.
 
-Some identifiers are in the source on purpose and are not secrets: the Sentry DSN and the CSP report endpoint (write-only ingest addresses), the Google Analytics measurement ID, the Plausible script URL and the Search Console verification file. Real secrets (`OPENAI_API_KEY`, `SENTRY_AUTH_TOKEN`) exist only in the environment.
+Some identifiers are in the source on purpose and are not secrets: the Sentry DSN and the CSP report endpoint (write-only ingest addresses), the Google Analytics measurement ID, the Plausible script URL and the Search Console verification file. Real secrets (`DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN`) exist only in the environment.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
@@ -160,9 +160,9 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 The site runs as a Render web service.
 
-- Build command: `bun install && bun run build`. Start command: `bun run start`. (Confirm in the Render dashboard; the Bun version must be 1.4.2.)
+- Build command: `bun install && bun run build`. Start command: `bun run start`. (Confirm in the Render dashboard; the Bun version must be 1.4.3.)
 - **Deploys are manual.** Auto-deploy is off, so pushing to `main` does not deploy; trigger the deploy from the Render dashboard or the Render CLI after CI is green.
-- Environment: `OPENAI_API_KEY` (required); `SENTRY_AUTH_TOKEN`, `NEXT_PUBLIC_SENTRY_ENV`, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES` as needed.
+- Environment: `DEEPSEEK_API_KEY` (required); `SENTRY_AUTH_TOKEN`, `NEXT_PUBLIC_SENTRY_ENV`, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES` as needed.
 - Safe CSP rollout: set `CSP_REPORT_ONLY=true`, deploy, watch the CSP issues in Sentry, then remove the variable to enforce.
 
 ## Related work

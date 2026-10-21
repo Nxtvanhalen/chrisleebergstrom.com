@@ -2,7 +2,7 @@
   "name": "chrisleebergstrom-com",
   "version": "1.0.0",
   "private": true,
-  "description": "chrisleebergstrom.com — portfolio site for Chris Lee Bergstrom: Next.js App Router, per-request CSP nonces, and EVE, the site's OpenAI-backed concierge.",
+  "description": "chrisleebergstrom.com — portfolio site for Chris Lee Bergstrom: Next.js App Router, per-request CSP nonces, and EVE, the site's AI concierge.",
   "homepage": "https://chrisleebergstrom.com",
   "license": "AGPL-3.0-only",
   "packageManager": "bun@1.4.3",

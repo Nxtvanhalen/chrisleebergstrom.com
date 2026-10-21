@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 
 // Bump this when the policy text changes. Hardcoded rather than `new Date()`:
 // that rendered "today" on every visit and mismatched between server and client.
-const LAST_UPDATED = '2026-10-20';
+const LAST_UPDATED = '2026-10-21';
 
 const MONTHS = [
   'January',
@@ -202,7 +202,8 @@ export default function PrivacyPage() {
                 <strong className="text-white">Render</strong> — hosts the website and its API
               </li>
               <li>
-                <strong className="text-white">OpenAI</strong> — generates EVE's replies (see below)
+                <strong className="text-white">DeepSeek</strong> — generates EVE's replies (see
+                below)
               </li>
               <li>
                 <strong className="text-white">Google</strong> — Google Analytics 4, with your
@@ -243,17 +244,21 @@ export default function PrivacyPage() {
 
             <H2>AI Assistant (EVE)</H2>
             <p>
-              EVE is powered by OpenAI. Each message you send goes through our server to OpenAI's
-              API, which generates the reply. OpenAI keeps the thread for a limited period so
-              follow-up questions have context, and processes it under its API data-usage terms (API
-              conversations are not used to train its models by default). We do not store chat
-              transcripts on our servers, and our error monitoring is configured to exclude them.
+              EVE is powered by DeepSeek (Hangzhou DeepSeek Artificial Intelligence Co., Ltd.). Each
+              message you send, together with the recent turns of the conversation so EVE has
+              context, goes through our server to DeepSeek's API, which generates the reply.
+              DeepSeek is based in the People's Republic of China and its API terms are governed by
+              Chinese law. Those terms don't commit to how long DeepSeek keeps requests or whether
+              it uses them to improve its models, so assume anything you send to EVE may be
+              retained. We do not store chat transcripts on our servers, and our error monitoring is
+              configured to exclude them.
             </p>
             <p className="mt-4">
-              Your side of the conversation is saved in your own browser's local storage so EVE can
-              pick up where you left off; it never leaves your device except as part of the chat
-              itself. Treat EVE like a public contact form: please don't share passwords, financial
-              details, or other sensitive information with her.
+              The conversation is saved in your own browser's local storage so EVE can pick up where
+              you left off; it never leaves your device except as part of the chat itself, and
+              &ldquo;New conversation&rdquo; clears it. Treat EVE like a public contact form: please
+              don't share names, contact details, passwords, financial details, or other personal or
+              sensitive information with her.
             </p>
 
             <H2>Mobile / SMS Messaging</H2>

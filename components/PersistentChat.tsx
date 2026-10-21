@@ -1,10 +1,21 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
+import dynamic from 'next/dynamic';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useChat } from '@/context/ChatContext';
-import ChatPanel from './ChatPanel';
 import EveAvatar from './EveAvatar';
+
+// The panel (and its markdown renderer) loads the first time EVE is opened, so
+// pages don't ship chat code to visitors who never use it.
+const ChatPanel = dynamic(() => import('./ChatPanel'), {
+  ssr: false,
+  loading: () => (
+    <p role="status" className="p-4 text-xs font-mono uppercase tracking-wider text-white/60">
+      Loading EVE…
+    </p>
+  ),
+});
 
 const NOTIFICATION_SHOWN_KEY = 'eve_notification_shown_v2';
 

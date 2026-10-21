@@ -6,8 +6,8 @@
 export const OG_IMAGES = [
   {
     url: '/images/profile/chris-profile-square-2.jpg',
-    width: 1200,
-    height: 1200,
+    width: 1095,
+    height: 1095,
     alt: 'Chris Lee Bergstrom — AI developer and live entertainment veteran',
   },
 ];

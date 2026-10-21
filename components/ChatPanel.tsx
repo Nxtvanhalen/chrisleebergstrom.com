@@ -9,10 +9,8 @@ import {
   type ChatMessage,
   LEGACY_STORAGE_KEYS,
   parseStoredHistory,
-  parseStoredResponseId,
-  RESPONSE_ID_KEY,
   serializeHistory,
-  serializeResponseId,
+  toRequestHistory,
 } from '@/lib/eve-storage';
 import type { EveStreamEvent } from '@/lib/eve-stream';
 import EveAvatar from './EveAvatar';
@@ -21,6 +19,7 @@ const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
   content:
     "Welcome — I'm EVE, Chris's portfolio assistant. Ask me about the work, the road, or how to reach him.",
+  local: true,
 };
 
 const GENERIC_ERROR_TEXT =
@@ -109,7 +108,6 @@ export default function ChatPanel() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [responseId, setResponseId] = useState<string | null>(null);
   // Last completed EVE reply, read out by the aria-live region. Updated once per
   // reply rather than per streamed token so screen readers aren't flooded.
   const [announcement, setAnnouncement] = useState('');
@@ -132,7 +130,6 @@ export default function ChatPanel() {
     const history = parseStoredHistory(storageGet(CHAT_HISTORY_KEY));
     if (history) setMessages(history);
     else storageRemove(CHAT_HISTORY_KEY);
-    setResponseId(parseStoredResponseId(storageGet(RESPONSE_ID_KEY), Date.now()));
     for (const key of LEGACY_STORAGE_KEYS) storageRemove(key);
 
     inputRef.current?.focus({ preventScroll: true });
@@ -158,10 +155,8 @@ export default function ChatPanel() {
     }
   }, [messages, isStreaming]);
 
-  // Return focus to the input after a reply (or failure). The input is
-  // `disabled` while busy, so focusing it from inside the send handler is a
-  // no-op and focus falls to <body>; this runs after the re-render that
-  // re-enables it. Skipped if the visitor has meanwhile focused something
+  // Return focus to the input after a reply (or failure), e.g. if the visitor
+  // clicked the send button. Skipped if they have meanwhile focused something
   // outside the panel.
   const busy = isTyping || isStreaming;
   useEffect(() => {
@@ -172,17 +167,11 @@ export default function ChatPanel() {
     inputRef.current?.focus({ preventScroll: true });
   }, [busy]);
 
-  const clearResponseId = () => {
-    setResponseId(null);
-    storageRemove(RESPONSE_ID_KEY);
-  };
-
   const startNewConversation = () => {
     if (isTyping || isStreaming) return;
     setMessages([WELCOME_MESSAGE]);
     setInput('');
     setAnnouncement('');
-    clearResponseId();
     storageRemove(CHAT_HISTORY_KEY);
     inputRef.current?.focus({ preventScroll: true });
   };
@@ -193,7 +182,11 @@ export default function ChatPanel() {
     if (!content || isTyping || isStreaming) return;
 
     const userMsg: ChatMessage = { role: 'user', content };
-    setMessages((prev) => [...prev, userMsg]);
+    // The transcript this reply belongs to. The model is stateless: these turns
+    // (trimmed) are the conversation it sees, and the finished reply is saved
+    // against them the moment it arrives, before the reveal animation ends.
+    const transcript = [...messages, userMsg];
+    setMessages(transcript);
     setInput('');
     setIsTyping(true);
     refocusRef.current = true;
@@ -202,21 +195,23 @@ export default function ChatPanel() {
     abortRef.current = controller;
 
     // Replace the last (assistant) message in place as the reply reveals.
-    const replaceLast = (text: string, note?: string) =>
-      setMessages((prev) => {
-        const next = [...prev];
-        next[next.length - 1] = note
-          ? { role: 'assistant', content: text, note }
-          : { role: 'assistant', content: text };
-        return next;
-      });
+    const toReply = (text: string, note?: string, local?: boolean): ChatMessage => ({
+      role: 'assistant',
+      content: text,
+      ...(note ? { note } : {}),
+      ...(local ? { local: true as const } : {}),
+    });
+    const replaceLast = (text: string, note?: string, local?: boolean) =>
+      setMessages((prev) => [...prev.slice(0, -1), toReply(text, note, local)]);
 
     // Smooth typewriter reveal. The network delivers tokens in uneven bursts, so
     // we buffer the full received text in `target` and reveal it at a steady
-    // cadence (`shown` chars). Speed eases up the further `shown` trails `target`,
-    // so long bursts drain quickly without the reveal ever lagging far behind.
-    const BASE_CPS = 40; // baseline reveal speed (characters/second)
-    const CATCHUP = 0; // extra chars/second per pending character (0 = constant speed)
+    // cadence (`shown` chars). Speed scales with how far `shown` trails `target`,
+    // so a burst drains in a fraction of a second instead of holding the input
+    // locked; once the reply is complete the rest drains faster still.
+    const BASE_CPS = 50; // floor reveal speed (characters/second)
+    const CATCHUP = 3; // chars/second per pending character while streaming
+    const DRAIN = 8; // the same once the full reply has arrived
     const reduceMotion =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -229,6 +224,9 @@ export default function ChatPanel() {
     // Set when the server reports the reply failed or was cut off after some
     // text already arrived; shown under the partial reply.
     let note: string | undefined;
+    // True when the bubble holds only our own error text, no model output: it is
+    // shown but never sent back to the model as something EVE said.
+    let localReply = false;
     let finalized = false;
     let lastTs: number | null = null;
 
@@ -244,7 +242,7 @@ export default function ChatPanel() {
       finalized = true;
       stopRaf();
       const text = finalText ?? target;
-      replaceLast(text, note);
+      replaceLast(text, note, localReply);
       setAnnouncement(note ? `${text} ${note}` : text);
       setIsStreaming(false);
     };
@@ -258,7 +256,7 @@ export default function ChatPanel() {
 
       if (shown < target.length) {
         const remaining = target.length - shown;
-        const cps = Math.max(BASE_CPS, remaining * CATCHUP);
+        const cps = Math.max(BASE_CPS, remaining * (streamDone ? DRAIN : CATCHUP));
         // Accumulate fractional progress so slow speeds aren't floored up to one
         // character per frame (≈ the display's refresh rate). Render floor(shown).
         shown = Math.min(target.length, shown + cps * dt);
@@ -272,51 +270,32 @@ export default function ChatPanel() {
       rafRef.current = requestAnimationFrame(tick);
     };
 
-    const post = (previousResponseId: string | null) =>
-      fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: content,
-          previousResponseId: previousResponseId ?? undefined,
-          context: currentContext,
-        }),
-        signal: controller.signal,
-      });
+    const readError = async (res: Response): Promise<string> => {
+      const data = (await res.json().catch(() => null)) as { error?: unknown } | null;
+      return typeof data?.error === 'string' ? data.error : 'Network response was not ok';
+    };
 
-    const readError = async (res: Response): Promise<{ message: string; code?: string }> => {
-      const data = (await res.json().catch(() => null)) as {
-        error?: unknown;
-        code?: unknown;
-      } | null;
-      return {
-        message: typeof data?.error === 'string' ? data.error : 'Network response was not ok',
-        code: typeof data?.code === 'string' ? data.code : undefined,
-      };
+    // Saves the transcript with the finished reply. Called as soon as the stream
+    // ends, so closing the panel mid-reveal can't lose an answer.
+    const persistReply = (text: string, replyNote?: string, local?: boolean) => {
+      storageSet(
+        CHAT_HISTORY_KEY,
+        serializeHistory([...transcript, toReply(text, replyNote, local)]),
+      );
     };
 
     let placeholderAdded = false;
 
     try {
-      let res = await post(responseId);
-
-      // A stale previous_response_id (OpenAI expires them) is the usual reason a
-      // send fails once a conversation is a few days old. Drop the id and retry
-      // once without it; the visitor just loses EVE's memory of earlier turns.
-      // Other failures (outages, rate limits) keep the id so memory survives them.
-      if (!res.ok && responseId) {
-        const err = await readError(res);
-        if (err.code === 'stale_conversation') {
-          clearResponseId();
-          res = await post(null);
-        } else {
-          throw new ChatRequestError(err.message, res.status);
-        }
-      }
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: toRequestHistory(transcript), context: currentContext }),
+        signal: controller.signal,
+      });
 
       if (!res.ok || !res.body) {
-        const err = await readError(res);
-        throw new ChatRequestError(err.message, res.status);
+        throw new ChatRequestError(await readError(res), res.status);
       }
 
       // First byte is on the way — swap the "thinking" indicator for a live,
@@ -362,10 +341,6 @@ export default function ChatPanel() {
               finalText = evt.finalText;
               if (evt.finalText !== target) target = evt.finalText;
             }
-            if (evt.responseId && evt.responseId !== responseId) {
-              setResponseId(evt.responseId);
-              storageSet(RESPONSE_ID_KEY, serializeResponseId(evt.responseId, Date.now()));
-            }
             streamDone = true;
           } else if (evt.type === 'error') {
             // Failed or cut off. Keep whatever text arrived and flag it; only
@@ -374,6 +349,7 @@ export default function ChatPanel() {
               note = evt.message || CUT_OFF_NOTE;
             } else {
               target = evt.message || "I couldn't process that request. Please try again.";
+              localReply = true;
             }
             finalText = target;
             streamDone = true;
@@ -390,7 +366,9 @@ export default function ChatPanel() {
       if (!target) {
         target = "I couldn't process that request. Please try again.";
         finalText = target;
+        localReply = true;
       }
+      persistReply(finalText ?? target, note, localReply);
       // If no reveal loop is running (reduced motion, or it already drained),
       // settle immediately; otherwise `tick` finalizes once it catches up.
       if (rafRef.current == null) {
@@ -405,10 +383,11 @@ export default function ChatPanel() {
         err instanceof ChatRequestError && err.status === 429
           ? RATE_LIMIT_TEXT
           : GENERIC_ERROR_TEXT;
+      const errorMsg: ChatMessage = { role: 'assistant', content: errorText, local: true };
       if (placeholderAdded) {
-        replaceLast(errorText);
+        setMessages((prev) => [...prev.slice(0, -1), errorMsg]);
       } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: errorText }]);
+        setMessages((prev) => [...prev, errorMsg]);
       }
       setAnnouncement(errorText);
       setIsStreaming(false);
@@ -420,7 +399,7 @@ export default function ChatPanel() {
     }
   };
 
-  const hasConversation = messages.length > 1 || responseId !== null;
+  const hasConversation = messages.length > 1;
 
   return (
     <div ref={rootRef} className="flex flex-col h-full font-body">
@@ -496,7 +475,10 @@ export default function ChatPanel() {
           placeholder={
             busy ? 'EVE is responding…' : "Ask about Chris's work, projects, or how to reach him…"
           }
-          disabled={busy}
+          // Read-only rather than disabled while EVE replies: a disabled input
+          // drops focus to <body>, which also breaks Escape-to-close mid-reply.
+          // sendMessage refuses to send while busy.
+          readOnly={busy}
           aria-label="Message EVE"
           autoComplete="off"
           maxLength={4000}

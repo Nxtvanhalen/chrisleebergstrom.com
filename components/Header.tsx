@@ -176,11 +176,12 @@ export default function Header() {
     <>
       {/* Skip-to-content link — :focus-visible reveal for keyboard users.
           A useEffect above explicitly blurs this on pathname change so Next's
-          post-navigation focus heuristic can't pin :focus-visible on it. */}
+          post-navigation focus heuristic can't pin :focus-visible on it. Its z-index
+          clears the fixed header (1000) and the menu drawer (1001-1002). */}
       <a
         ref={skipLinkRef}
         href="#main-content"
-        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-200 focus-visible:px-4 focus-visible:py-2 focus-visible:bg-black focus-visible:text-white focus-visible:rounded-xs focus-visible:outline-hidden focus-visible:border focus-visible:border-mauve focus-visible:font-mono focus-visible:text-xs focus-visible:uppercase focus-visible:tracking-[0.2em]"
+        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-[1100] focus-visible:px-4 focus-visible:py-2 focus-visible:bg-black focus-visible:text-white focus-visible:rounded-xs focus-visible:outline-hidden focus-visible:border focus-visible:border-mauve focus-visible:font-mono focus-visible:text-xs focus-visible:uppercase focus-visible:tracking-[0.2em]"
       >
         Skip to main content
       </a>

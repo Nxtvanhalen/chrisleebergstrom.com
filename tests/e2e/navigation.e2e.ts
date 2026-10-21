@@ -16,6 +16,14 @@ test.describe('skip link', () => {
     // Visually hidden until focused; a keyboard user must be able to see it.
     await expect(skipLink).toBeVisible();
     await expect(skipLink).toHaveAttribute('href', '#main-content');
+    // Visible is not enough: it must sit above the fixed header, or a sighted
+    // keyboard user sees (and a pointer hits) the header instead.
+    const onTop = await skipLink.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return hit === el || el.contains(hit);
+    });
+    expect(onTop).toBe(true);
 
     await page.keyboard.press('Enter');
     await expect.poll(() => focusIsWithin(page, 'main#main-content')).toBe(true);

@@ -14,7 +14,7 @@ Everything below is maintained by hand; the block above is managed by `next dev`
 
 ## What this is
 
-chrisleebergstrom.com: a Next.js 16 App Router personal site with a per-request nonce CSP and EVE, an OpenAI-backed chat concierge. Human-readable docs: `README.md`, `docs/DEVELOPMENT.md` (conventions, EVE internals, CSP rules), `docs/CSP-AND-NEXTJS-ROADMAP.md` (why the CSP is built this way and the gotchas).
+chrisleebergstrom.com: a Next.js 16 App Router personal site with a per-request nonce CSP and EVE, a streaming chat concierge on DeepSeek. Human-readable docs: `README.md`, `docs/DEVELOPMENT.md` (conventions, EVE internals, CSP rules), `docs/CSP-AND-NEXTJS-ROADMAP.md` (why the CSP is built this way and the gotchas).
 
 ## Commands (Bun 1.4.3, see `.bun-version`)
 
@@ -44,17 +44,18 @@ All four checks run in CI on every push and PR to `main`. Run them before declar
 - Don't make routes static (`force-static`, `revalidate`, `generateStaticParams`); every route is `force-dynamic` so framework scripts carry the request's nonce.
 - A new third-party host needs an entry in `buildCspHeader` (`lib/proxy-security.ts`) plus a unit test. Sentry needs none (it tunnels via `/monitoring`).
 - Non-CSP security headers live in `next.config.js`; don't move them.
-- Don't add paths to the matcher exclusions in `proxy.ts`. Exclusions are prefix matches (excluding `robots.txt` would also skip `/robots.txt-anything`, whose HTML 404 would then ship without a CSP); only `_next/static` and `_next/image` are excluded, and a CSP header on a plain file is harmless.
+- Don't add paths to the matcher exclusions in `proxy.ts`. Exclusions are prefix matches (excluding `robots.txt` would also skip `/robots.txt-anything`, whose HTML 404 would then ship without a CSP); only `/_next/static/…` and exactly `/_next/image` are excluded (`'/((?!_next/static/|_next/image$).*)'`), and a CSP header on a plain file is harmless. Never exempt requests by a header such as `next-router-prefetch`: clients control headers, so that would let a blocked IP skip the blocklist.
 
 ## EVE
 
-- The system prompt is `EVE_SYSTEM_PROMPT` in `app/api/chat/route.ts`. It may only describe the public projects on the site; it must never name internal, unreleased or employer work. Model and caps: `EVE_MODEL`, `MAX_OUTPUT_TOKENS`, the rate limiter options in the same file.
-- Request validation is in `lib/eve-validation.ts` (`EVE_CONTEXTS` allowlist, size and id checks); the NDJSON stream protocol in `lib/eve-stream.ts`; localStorage keys in `lib/eve-storage.ts`. Change the stored shape → bump the key suffix and add the old key to `LEGACY_STORAGE_KEYS`.
-- Tests mock `/api/chat`; never add a test that calls OpenAI.
+- The system prompt is `EVE_SYSTEM_PROMPT` in `app/api/chat/route.ts`. It may only describe the public projects on the site; it must never name internal, unreleased or employer work. Model, caps and timeouts: `EVE_MODEL` (DeepSeek `deepseek-flash`, thinking disabled), `MAX_OUTPUT_TOKENS`, `CONNECT_TIMEOUT_MS` and the rate limiter options in the same file.
+- The model is stateless: the client resends recent turns, and `trimHistory` (`lib/eve-validation.ts`) caps them on both sides (`MAX_HISTORY_MESSAGES`, `MAX_HISTORY_CHARS`). Request validation (`EVE_CONTEXTS` allowlist, size checks) is in the same file; the NDJSON stream protocol and the idle/total stream timeouts in `lib/eve-stream.ts`; localStorage keys in `lib/eve-storage.ts`. Change the stored shape → bump the key suffix and add the old key to `LEGACY_STORAGE_KEYS`.
+- Changing the model provider means updating the privacy policy (`app/privacy/page.tsx`), which names where chat messages go.
+- Tests mock `/api/chat`; never add a test that calls DeepSeek.
 
 ## Secrets, privacy, assets
 
-- Never commit `.env*` files or paste keys into code or docs; `.env.example` is the only tracked env file and holds no values. Secrets are `OPENAI_API_KEY` and `SENTRY_AUTH_TOKEN`; the Sentry DSN, GA id and Plausible URL are public on purpose.
+- Never commit `.env*` files or paste keys into code or docs; `.env.example` is the only tracked env file and holds no values. Secrets are `DEEPSEEK_API_KEY` and `SENTRY_AUTH_TOKEN`; the Sentry DSN, GA id and Plausible URL are public on purpose.
 - Keep Sentry's `dataCollection` in `sentry.shared.ts` restrictive: no request bodies, cookies or IPs. Visitor chat messages must never be logged or reported.
 - Everything in `public/` must be referenced from code, or removed. Strip EXIF metadata (GPS especially) from any image before adding it; no `.heic`/`.heif` originals.
 - Don't touch `public/sw.js` except to delete it after 2027-03.

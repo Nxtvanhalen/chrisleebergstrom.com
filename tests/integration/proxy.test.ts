@@ -126,14 +126,13 @@ describe('proxy() — default environment', () => {
     expect(res.status).toBe(200);
   });
 
-  test('the matcher skips only build assets and router prefetches', async () => {
+  test('the matcher skips only build assets', async () => {
     const { config } = await loadProxy();
     const matches = (url: string, headers?: Record<string, string>) =>
       unstable_doesMiddlewareMatch({ config, url, headers });
 
     expect(matches('/_next/static/chunks/main.js')).toBe(false);
     expect(matches('/_next/image?url=%2Fimages%2Fx.webp&w=640&q=75')).toBe(false);
-    expect(matches('/', { 'next-router-prefetch': '1' })).toBe(false);
 
     // Prefix look-alikes render the HTML 404 and must still get a CSP.
     for (const url of [
@@ -141,12 +140,16 @@ describe('proxy() — default environment', () => {
       '/about',
       '/robots.txt',
       '/robots.txt-x',
+      '/_next/static-x',
+      '/_next/image-x',
       '/static-x',
       '/monitoring-x',
     ]) {
       expect(matches(url)).toBe(true);
     }
-    // Browser prefetches fetch real documents, so they are not skipped.
+    // Prefetch headers are client-controlled, so they must not skip the proxy
+    // (and with it the IP blocklist).
+    expect(matches('/about', { 'next-router-prefetch': '1' })).toBe(true);
     expect(matches('/about', { purpose: 'prefetch' })).toBe(true);
   });
 });

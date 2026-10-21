@@ -53,6 +53,17 @@ export function decodeEntities(input: string): string {
   );
 }
 
+// Line breaks and block-element tags become spaces, so "<p>a</p><p>b</p>"
+// reads "a b" rather than "ab". Tags are stripped before entities are decoded,
+// so an escaped &lt; in the text isn't turned into a "<" the stripper swallows.
+const BLOCK_BOUNDARY = /<br\s*\/?>|<\/?(?:p|div|ul|ol|li|h[1-6]|blockquote)\b[^>]*>/gi;
+
+/** Plain text from an HTML fragment: block boundaries become spaces, tags go, entities decode. */
+export function htmlToText(html: string): string {
+  const stripped = html.replace(BLOCK_BOUNDARY, ' ').replace(/<[^>]*>/g, '');
+  return decodeEntities(stripped).replace(/\s+/g, ' ').trim();
+}
+
 // fast-xml-parser yields a string for plain elements and { '#text', '@_attr' }
 // for elements with attributes; normalise both to raw text.
 function getRawText(field: unknown): string {
@@ -99,10 +110,8 @@ export function parseSubstackFeed(xml: string): SubstackFeed {
       string,
       unknown
     >;
-    // Strip tags before decoding, so an escaped &lt; in the post text isn't
-    // turned into a "<" that the tag stripper then swallows.
     const fullContent = getRawText(item['content:encoded']) || getRawText(item.description);
-    const textContent = decodeEntities(fullContent.replace(/<[^>]*>/g, '')).trim();
+    const textContent = htmlToText(fullContent);
     const contentSnippet =
       textContent.length > SNIPPET_CHARS
         ? `${textContent.substring(0, SNIPPET_CHARS)}...`

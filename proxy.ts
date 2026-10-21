@@ -75,16 +75,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip only Next's build assets. Matcher exclusions are prefixes, so excluding
-  // e.g. `robots.txt` would also skip `/robots.txt-anything`, whose HTML 404 would
-  // then ship without a CSP; a CSP header on a plain file is harmless.
-  // The `missing` clause skips the client router's RSC prefetches, which never
-  // render HTML. Browser prefetches (`Purpose: prefetch`) are NOT skipped: they
-  // fetch real documents that may later be used for navigation.
-  matcher: [
-    {
-      source: '/((?!_next/static|_next/image).*)',
-      missing: [{ type: 'header', key: 'next-router-prefetch' }],
-    },
-  ],
+  // Skip only Next's build assets: `/_next/static/...` files and the `/_next/image`
+  // optimizer. Matcher exclusions are prefixes, so the slash and the `$` matter:
+  // without them `/_next/static-x` or `/_next/image-x` would skip the proxy and
+  // their HTML 404 would ship without a CSP. A CSP header on a plain file is harmless.
+  // Router prefetches are NOT skipped: any client can send `next-router-prefetch`,
+  // and exempting it would let a blocked IP walk past the blocklist with one header.
+  matcher: ['/((?!_next/static/|_next/image$).*)'],
 };

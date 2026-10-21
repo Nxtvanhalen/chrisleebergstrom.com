@@ -12,12 +12,17 @@ import {
 } from '@/lib/eve-validation';
 import { getClientIp } from '@/lib/proxy-security';
 
-const EVE_MODEL = 'gpt-5-nano-2025-08-07';
-// Upper bound on reply length (reasoning tokens count too, but effort is
-// minimal). EVE leads with the answer and keeps it short; ~800 tokens is
-// several paragraphs, so normal replies never hit it while a runaway one is
-// capped. The client shows a "cut off" note if it does.
+// DeepSeek V4.1 Flash, in non-thinking mode (see `thinking` below): the fast,
+// cheap tier, which is all a site concierge needs.
+const EVE_MODEL = 'deepseek-flash';
+const DEEPSEEK_CHAT_URL = 'https://api.deepseek.com/chat/completions';
+// Upper bound on reply length. EVE leads with the answer and keeps it short;
+// ~800 tokens is several paragraphs, so normal replies never hit it while a
+// runaway one is capped. The client shows a "cut off" note if it does.
 const MAX_OUTPUT_TOKENS = 800;
+// How long DeepSeek gets to start answering (response headers). Once tokens
+// flow, the idle/total limits in lib/eve-stream.ts take over.
+const CONNECT_TIMEOUT_MS = 20_000;
 
 // EVE System Prompt — portfolio assistant for Chris Lee Bergstrom
 const EVE_SYSTEM_PROMPT = `You are EVE — Entertainment Vision Engine.
@@ -182,7 +187,7 @@ All background images on this site were created with AI image-generation tools, 
 `;
 
 // One limiter per server instance. 20/min per IP keeps a single visitor from
-// hammering the model; 300/hour overall bounds the OpenAI bill if traffic is
+// hammering the model; 300/hour overall bounds the DeepSeek bill if traffic is
 // spread across many addresses (bots, VPN pools).
 const chatLimiter = createRateLimiter({
   perIpLimit: 20,
@@ -197,8 +202,6 @@ class ClientError extends Error {
     message: string,
     public statusCode: number = 400,
     public headers: Record<string, string> = {},
-    // Machine-readable hint the client can branch on (see stale_conversation).
-    public code?: string,
   ) {
     super(message);
     this.name = 'ClientError';
@@ -209,30 +212,9 @@ const noStoreHeaders = { 'Cache-Control': 'no-store, max-age=0' };
 
 const GENERIC_UNAVAILABLE = 'EVE is temporarily unavailable. Please try again shortly.';
 
-type OpenAIErrorBody = {
-  error?: { message?: string; type?: string; param?: string | null; code?: string | null };
-};
-
-// A 400/404 that names previous_response_id means the stored conversation has
-// expired (OpenAI keeps responses ~30 days) or never existed. The client clears
-// its id and retries once without it, so this must be told apart from an
-// outage.
-function isStaleConversationError(status: number, detail: string): boolean {
-  if (status !== 400 && status !== 404) return false;
-  try {
-    const parsed = JSON.parse(detail) as OpenAIErrorBody;
-    const err = parsed.error;
-    return (
-      err?.param === 'previous_response_id' || /previous[_ ]response/i.test(err?.message ?? '')
-    );
-  } catch {
-    return /previous[_ ]response/i.test(detail);
-  }
-}
-
 function errorResponse(error: ClientError) {
   return NextResponse.json(
-    { error: error.message, success: false, ...(error.code ? { code: error.code } : {}) },
+    { error: error.message, success: false },
     { status: error.statusCode, headers: { ...noStoreHeaders, ...error.headers } },
   );
 }
@@ -275,13 +257,13 @@ export async function POST(request: Request) {
     if (!parsed.ok) {
       throw new ClientError(parsed.error);
     }
-    const { prompt, previousResponseId, context } = parsed.value;
+    const { messages, context } = parsed.value;
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       // Server misconfiguration, not a visitor mistake: page Chris, tell the
       // visitor nothing specific.
-      Sentry.captureException(new Error('OPENAI_API_KEY is not set; EVE chat is down'));
+      Sentry.captureException(new Error('DEEPSEEK_API_KEY is not set; EVE chat is down'));
       return NextResponse.json(
         { error: GENERIC_UNAVAILABLE, success: false },
         { status: 500, headers: noStoreHeaders },
@@ -294,54 +276,65 @@ export async function POST(request: Request) {
       systemPrompt += `\n\n[CURRENT CONTEXT]\nThe user is currently viewing the "${context}" section of the website. Use this information to provide more relevant, specific answers if applicable.`;
     }
 
-    const requestBody: Record<string, unknown> = {
+    const requestBody = {
       model: EVE_MODEL,
-      input: prompt,
-      instructions: systemPrompt,
-      reasoning: { effort: 'minimal' },
-      max_output_tokens: MAX_OUTPUT_TOKENS,
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      // Non-thinking mode: no hidden reasoning tokens, so replies start fast.
+      thinking: { type: 'disabled' },
+      max_tokens: MAX_OUTPUT_TOKENS,
       stream: true,
     };
-    if (previousResponseId) {
-      requestBody.previous_response_id = previousResponseId;
-    }
 
     // Tie the upstream call to the inbound request so a visitor closing the
-    // panel mid-reply stops us paying for tokens nobody will read.
-    const upstream = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-      },
-      body: JSON.stringify(requestBody),
-      signal: request.signal,
-    });
-
-    if (!upstream.ok || !upstream.body) {
-      const detail = await upstream.text().catch(() => '');
-      if (previousResponseId && isStaleConversationError(upstream.status, detail)) {
-        throw new ClientError(
-          'That conversation has expired. Please send your message again.',
-          409,
-          {},
-          'stale_conversation',
+    // panel mid-reply stops us paying for tokens nobody will read, and give up
+    // if DeepSeek doesn't start answering in time. The connect timer is cleared
+    // once a successful response arrives, so it never cuts a streaming reply
+    // short, but it still bounds reading an error body.
+    const connect = new AbortController();
+    const connectTimer = setTimeout(() => connect.abort(), CONNECT_TIMEOUT_MS);
+    let upstream: Response;
+    try {
+      upstream = await fetch(DEEPSEEK_CHAT_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.any([request.signal, connect.signal]),
+      });
+    } catch (error: unknown) {
+      if (connect.signal.aborted && !request.signal.aborted) {
+        console.error(`DeepSeek did not respond within ${CONNECT_TIMEOUT_MS}ms`);
+        Sentry.captureMessage('DeepSeek connect timeout on EVE chat', 'warning');
+        return NextResponse.json(
+          { error: GENERIC_UNAVAILABLE, success: false },
+          { status: 504, headers: noStoreHeaders },
         );
       }
+      clearTimeout(connectTimer);
+      throw error;
+    }
+
+    if (!upstream.ok || !upstream.body) {
+      // Still under the connect timer: a stalled error body is aborted with it.
+      const detail = await upstream.text().catch(() => '');
+      clearTimeout(connectTimer);
       console.error(
-        `OpenAI API error: ${upstream.status} ${upstream.statusText} ${detail.slice(0, 500)}`,
+        `DeepSeek API error: ${upstream.status} ${upstream.statusText} ${detail.slice(0, 500)}`,
       );
-      // 401/403 mean a bad or revoked key — a config problem worth paging on.
-      // Everything else is an OpenAI-side hiccup; still worth a Sentry issue so
-      // a sustained outage is visible, but the visitor just sees "try again".
-      Sentry.captureException(new Error(`OpenAI responded ${upstream.status} to EVE chat`));
+      // 401 (bad key) and 402 (balance exhausted) need Chris; everything else
+      // is a DeepSeek-side hiccup. All get a Sentry issue so a sustained outage
+      // is visible, but the visitor just sees "try again".
+      Sentry.captureException(new Error(`DeepSeek responded ${upstream.status} to EVE chat`));
       return NextResponse.json(
         { error: GENERIC_UNAVAILABLE, success: false },
         { status: 503, headers: noStoreHeaders },
       );
     }
 
+    clearTimeout(connectTimer);
     const stream = createEveNdjsonStream(upstream.body, {
       signal: request.signal,
       onFailure: (failure, error) => {
@@ -364,7 +357,7 @@ export async function POST(request: Request) {
       return errorResponse(error);
     }
 
-    // The visitor went away before OpenAI answered; nothing to report.
+    // The visitor went away before DeepSeek answered; nothing to report.
     if (request.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
       return NextResponse.json(
         { error: 'Request cancelled', success: false },

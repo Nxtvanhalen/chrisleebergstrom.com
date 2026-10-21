@@ -5,21 +5,37 @@ import {
   EVE_STREAM_MESSAGES,
   type EveStreamEvent,
   parseSseEvent,
-  parseStreamEvent,
+  parseStreamChunk,
   splitSseBuffer,
 } from '../../lib/eve-stream';
 
 // --- helpers ----------------------------------------------------------------
 
-function sse(type: string, payload: Record<string, unknown> = {}): string {
-  return `event: ${type}\ndata: ${JSON.stringify({ type, ...payload })}\n\n`;
+// Chunks in the exact shape DeepSeek's Chat Completions stream sends (captured
+// from a real `deepseek-flash` call with thinking disabled).
+function chunk(delta: Record<string, unknown>, finishReason: string | null = null, usage = null) {
+  return `data: ${JSON.stringify({
+    id: 'cbe9e48c-48ce-4b1a-b0fc-01249be1621c',
+    object: 'chat.completion.chunk',
+    created: 1792614666,
+    model: 'deepseek-flash',
+    system_fingerprint: 'e72d3c7f663d3e1383b00b3884cb4501',
+    choices: [{ index: 0, delta, logprobs: null, finish_reason: finishReason }],
+    usage,
+  })}\n\n`;
 }
 
-const CREATED = sse('response.created', { response: { id: 'resp_123', status: 'in_progress' } });
-const DELTA = (text: string) => sse('response.output_text.delta', { delta: text });
-const COMPLETED = sse('response.completed', {
-  response: { id: 'resp_123', status: 'completed' },
-});
+const ROLE = chunk({ role: 'assistant', content: '' });
+const TEXT = (content: string) => chunk({ content });
+const FINISH = (reason: string) =>
+  chunk({ content: '' }, reason, {
+    prompt_tokens: 15,
+    completion_tokens: 3,
+    total_tokens: 18,
+  } as never);
+const STOP = FINISH('stop');
+const DONE = 'data: [DONE]\n\n';
+const KEEP_ALIVE = ': keep-alive\n\n';
 
 type UpstreamControls = {
   stream: ReadableStream<Uint8Array>;
@@ -29,7 +45,7 @@ type UpstreamControls = {
   cancelled(): boolean;
 };
 
-// A fake OpenAI SSE stream the test drives chunk by chunk.
+// A fake DeepSeek SSE stream the test drives chunk by chunk.
 function fakeUpstream(initial: string[] = []): UpstreamControls {
   const encoder = new TextEncoder();
   let controller!: ReadableStreamDefaultController<Uint8Array>;
@@ -37,7 +53,7 @@ function fakeUpstream(initial: string[] = []): UpstreamControls {
   const stream = new ReadableStream<Uint8Array>({
     start(c) {
       controller = c;
-      for (const chunk of initial) c.enqueue(encoder.encode(chunk));
+      for (const piece of initial) c.enqueue(encoder.encode(piece));
     },
     cancel() {
       cancelled = true;
@@ -45,7 +61,7 @@ function fakeUpstream(initial: string[] = []): UpstreamControls {
   });
   return {
     stream,
-    push: (chunk) => controller.enqueue(encoder.encode(chunk)),
+    push: (piece) => controller.enqueue(encoder.encode(piece)),
     close: () => controller.close(),
     fail: (error) => controller.error(error),
     cancelled: () => cancelled,
@@ -74,113 +90,135 @@ describe('splitSseBuffer', () => {
   });
 });
 
-describe('parseStreamEvent', () => {
-  test('narrows the events the reducer acts on', () => {
-    expect(parseStreamEvent({ type: 'response.output_text.delta', delta: 'hi' })).toEqual({
-      type: 'response.output_text.delta',
-      delta: 'hi',
-    });
-    expect(parseStreamEvent({ type: 'response.completed', response: { id: 'resp_1' } })).toEqual({
-      type: 'response.completed',
-      response: { id: 'resp_1' },
-    });
-    expect(parseStreamEvent({ type: 'error', code: 'rate_limit', message: 'slow' })).toEqual({
-      type: 'error',
-      code: 'rate_limit',
-      message: 'slow',
-    });
+describe('parseStreamChunk', () => {
+  test('text, finish reason, or both from one chunk', () => {
+    expect(
+      parseStreamChunk({ choices: [{ delta: { content: 'hi' }, finish_reason: null }] }),
+    ).toEqual([{ kind: 'text', text: 'hi' }]);
+    expect(
+      parseStreamChunk({ choices: [{ delta: { content: '' }, finish_reason: 'stop' }] }),
+    ).toEqual([{ kind: 'finish', reason: 'stop' }]);
+    expect(
+      parseStreamChunk({ choices: [{ delta: { content: '!' }, finish_reason: 'length' }] }),
+    ).toEqual([
+      { kind: 'text', text: '!' },
+      { kind: 'finish', reason: 'length' },
+    ]);
   });
 
-  test('ignores unknown and malformed events', () => {
-    expect(parseStreamEvent(null)).toBeNull();
-    expect(parseStreamEvent('string')).toBeNull();
-    expect(parseStreamEvent({ type: 'response.in_progress' })).toBeNull();
-    expect(parseStreamEvent({ type: 'response.output_text.delta', delta: 5 })).toBeNull();
-    expect(parseStreamEvent({ type: 'response.completed', response: {} })).toBeNull();
-    expect(parseStreamEvent({ type: 'response.completed' })).toBeNull();
+  test('an error payload becomes an error signal', () => {
+    expect(parseStreamChunk({ error: { message: 'Insufficient Balance' } })).toEqual([
+      { kind: 'error', message: 'Insufficient Balance' },
+    ]);
+    expect(parseStreamChunk({ error: {} })).toEqual([{ kind: 'error', message: 'upstream error' }]);
+  });
+
+  test('role-only, reasoning-only and unknown chunks yield nothing', () => {
+    expect(parseStreamChunk({ choices: [{ delta: { role: 'assistant', content: '' } }] })).toEqual(
+      [],
+    );
+    expect(parseStreamChunk({ choices: [{ delta: { reasoning_content: 'hmm' } }] })).toEqual([]);
+    expect(parseStreamChunk({ choices: [] })).toEqual([]);
+    expect(parseStreamChunk({ choices: [{ delta: { content: 5 } }] })).toEqual([]);
+    expect(parseStreamChunk(null)).toEqual([]);
+    expect(parseStreamChunk('string')).toEqual([]);
   });
 });
 
 describe('parseSseEvent', () => {
-  test('reads data: lines, skipping comments, [DONE], and bad JSON', () => {
+  test('reads data: lines, skipping comments and bad JSON; [DONE] is an end signal', () => {
     const raw = [
       ': keep-alive',
-      'event: response.output_text.delta',
-      'data: {"type":"response.output_text.delta","delta":"a"}',
-      'data: [DONE]',
+      'data: {"choices":[{"delta":{"content":"a"},"finish_reason":null}]}',
       'data: {not json',
-      'data: {"type":"response.output_text.delta","delta":"b"}',
+      'data: [DONE]',
     ].join('\n');
-    expect(parseSseEvent(raw)).toEqual([
-      { type: 'response.output_text.delta', delta: 'a' },
-      { type: 'response.output_text.delta', delta: 'b' },
-    ]);
+    expect(parseSseEvent(raw)).toEqual([{ kind: 'text', text: 'a' }, { kind: 'end' }]);
   });
 });
 
 // --- reducer --------------------------------------------------------------------
 
 describe('createReplyReducer', () => {
-  test('emits deltas and finishes with done + responseId + finalText', () => {
+  test('emits deltas and finishes with done + finalText', () => {
     const reply = createReplyReducer();
-    expect(reply.push(CREATED)).toEqual([]);
-    expect(reply.push(DELTA('Hel'))).toEqual([{ type: 'delta', text: 'Hel' }]);
-    expect(reply.push(DELTA('lo'))).toEqual([{ type: 'delta', text: 'lo' }]);
+    expect(reply.push(ROLE)).toEqual([]);
+    expect(reply.push(TEXT('Hel'))).toEqual([{ type: 'delta', text: 'Hel' }]);
+    expect(reply.push(TEXT('lo'))).toEqual([{ type: 'delta', text: 'lo' }]);
     expect(reply.finished()).toBe(false);
-    expect(reply.push(COMPLETED)).toEqual([]);
+    expect(reply.push(STOP)).toEqual([]);
     expect(reply.finished()).toBe(true);
     expect(reply.failure()).toBeNull();
-    expect(reply.finish()).toEqual({ type: 'done', responseId: 'resp_123', finalText: 'Hello' });
+    expect(reply.finish()).toEqual({ type: 'done', finalText: 'Hello' });
   });
 
-  test('reassembles events split across chunk boundaries', () => {
+  test('reassembles chunks split mid-line and mid-JSON', () => {
     const reply = createReplyReducer();
-    const whole = DELTA('split');
-    const out = [...reply.push(whole.slice(0, 20)), ...reply.push(whole.slice(20))];
+    const whole = TEXT('split') + STOP;
+    const out = [
+      ...reply.push(whole.slice(0, 17)),
+      ...reply.push(whole.slice(17, 140)),
+      ...reply.push(whole.slice(140)),
+    ];
     expect(out).toEqual([{ type: 'delta', text: 'split' }]);
+    expect(reply.finish()).toEqual({ type: 'done', finalText: 'split' });
   });
 
-  test('response.failed → error, no done', () => {
+  test('keep-alive comments are ignored', () => {
     const reply = createReplyReducer();
-    reply.push(CREATED);
-    reply.push(DELTA('partial'));
-    reply.push(
-      sse('response.failed', { response: { id: 'resp_123', error: { message: 'boom' } } }),
-    );
-    expect(reply.finished()).toBe(true);
-    expect(reply.failure()).toEqual({ code: 'failed', detail: 'boom' });
+    expect(reply.push(KEEP_ALIVE + KEEP_ALIVE)).toEqual([]);
+    reply.push(TEXT('ok') + STOP);
+    expect(reply.finish()).toEqual({ type: 'done', finalText: 'ok' });
+  });
+
+  test('finish_reason "length" → incomplete error, no done', () => {
+    const reply = createReplyReducer();
+    reply.push(TEXT('a long answ') + FINISH('length'));
+    expect(reply.failure()).toEqual({ code: 'incomplete', detail: 'finish_reason: length' });
     expect(reply.finish()).toEqual({
       type: 'error',
-      message: EVE_STREAM_MESSAGES.failed,
-      code: 'failed',
-    });
-  });
-
-  test('response.incomplete → error with the reason recorded', () => {
-    const reply = createReplyReducer();
-    reply.push(
-      sse('response.incomplete', {
-        response: { id: 'resp_123', incomplete_details: { reason: 'max_output_tokens' } },
-      }),
-    );
-    expect(reply.failure()).toEqual({
+      message: EVE_STREAM_MESSAGES.incomplete,
       code: 'incomplete',
-      detail: 'response.incomplete: max_output_tokens',
     });
-    expect(reply.finish().type).toBe('error');
   });
 
-  test('an upstream error event → error', () => {
+  test('any other finish reason (content_filter, insufficient_system_resource) → failed', () => {
+    for (const reason of ['content_filter', 'insufficient_system_resource']) {
+      const reply = createReplyReducer();
+      reply.push(FINISH(reason));
+      expect(reply.failure()).toEqual({ code: 'failed', detail: `finish_reason: ${reason}` });
+      expect(reply.finish()).toMatchObject({ type: 'error', code: 'failed' });
+    }
+  });
+
+  test('an error payload mid-stream → failed', () => {
     const reply = createReplyReducer();
-    reply.push(sse('error', { code: 'server_error', message: 'upstream exploded' }));
+    reply.push(TEXT('partial'));
+    reply.push(`data: ${JSON.stringify({ error: { message: 'upstream exploded' } })}\n\n`);
     expect(reply.failure()).toEqual({ code: 'failed', detail: 'upstream exploded' });
     expect(reply.finish()).toMatchObject({ type: 'error', code: 'failed' });
   });
 
-  test('stream ending without a terminal event → disconnected, never done', () => {
+  test('[DONE] without a finish reason → disconnected', () => {
     const reply = createReplyReducer();
-    reply.push(CREATED);
-    reply.push(DELTA('half a rep'));
+    reply.push(TEXT('half') + DONE);
+    expect(reply.finished()).toBe(true);
+    expect(reply.finish()).toEqual({
+      type: 'error',
+      message: EVE_STREAM_MESSAGES.disconnected,
+      code: 'disconnected',
+    });
+  });
+
+  test('[DONE] after stop changes nothing', () => {
+    const reply = createReplyReducer();
+    reply.push(TEXT('fine') + STOP + DONE);
+    expect(reply.finish()).toEqual({ type: 'done', finalText: 'fine' });
+  });
+
+  test('stream ending with no terminal signal → disconnected, never done', () => {
+    const reply = createReplyReducer();
+    reply.push(ROLE + TEXT('half a rep'));
     expect(reply.finished()).toBe(false);
     expect(reply.finish()).toEqual({
       type: 'error',
@@ -191,9 +229,9 @@ describe('createReplyReducer', () => {
 
   test('stops consuming events after a terminal one', () => {
     const reply = createReplyReducer();
-    const out = reply.push(DELTA('a') + COMPLETED + DELTA('b'));
+    const out = reply.push(TEXT('a') + STOP + TEXT('b'));
     expect(out).toEqual([{ type: 'delta', text: 'a' }]);
-    expect(reply.finish()).toMatchObject({ finalText: 'a' });
+    expect(reply.finish()).toEqual({ type: 'done', finalText: 'a' });
   });
 });
 
@@ -201,35 +239,39 @@ describe('createReplyReducer', () => {
 
 describe('createEveNdjsonStream', () => {
   test('a healthy upstream yields deltas then exactly one done', async () => {
-    const upstream = fakeUpstream([CREATED, DELTA('Hello'), DELTA(', world'), COMPLETED]);
+    const upstream = fakeUpstream([ROLE, TEXT('Hello'), TEXT(', world'), STOP, DONE]);
     upstream.close();
     const events = await readNdjson(createEveNdjsonStream(upstream.stream));
     expect(events).toEqual([
       { type: 'delta', text: 'Hello' },
       { type: 'delta', text: ', world' },
-      { type: 'done', responseId: 'resp_123', finalText: 'Hello, world' },
+      { type: 'done', finalText: 'Hello, world' },
     ]);
   });
 
-  test('stops reading once OpenAI sends a terminal event, even if the upstream stays open', async () => {
-    const upstream = fakeUpstream([CREATED, DELTA('done early'), COMPLETED]);
-    // Deliberately NOT closed: the wrapper must finish on its own.
+  test('a role-only first chunk does not stall the consumer', async () => {
+    // The opening chunk carries no text; a pull that enqueues nothing would hang.
+    const upstream = fakeUpstream([ROLE]);
+    const reader = createEveNdjsonStream(upstream.stream).getReader();
+    const pending = reader.read();
+    upstream.push(KEEP_ALIVE);
+    upstream.push(TEXT('hi'));
+    const { value } = await pending;
+    expect(JSON.parse(new TextDecoder().decode(value))).toEqual({ type: 'delta', text: 'hi' });
+    await reader.cancel();
+  });
+
+  test('stops reading once the reply finishes, even if the upstream stays open', async () => {
+    const upstream = fakeUpstream([ROLE, TEXT('done early'), STOP]);
+    // Deliberately NOT closed and no [DONE]: the wrapper must finish on its own.
     const events = await readNdjson(createEveNdjsonStream(upstream.stream));
-    expect(events.at(-1)).toEqual({
-      type: 'done',
-      responseId: 'resp_123',
-      finalText: 'done early',
-    });
+    expect(events.at(-1)).toEqual({ type: 'done', finalText: 'done early' });
     expect(upstream.cancelled()).toBe(true);
   });
 
-  test('response.failed → one error event, no done, onFailure called', async () => {
+  test('a content_filter finish → one error event, no done, onFailure called', async () => {
     const failures: unknown[] = [];
-    const upstream = fakeUpstream([
-      CREATED,
-      DELTA('partial'),
-      sse('response.failed', { response: { id: 'resp_123', error: { message: 'boom' } } }),
-    ]);
+    const upstream = fakeUpstream([TEXT('partial'), FINISH('content_filter')]);
     const events = await readNdjson(
       createEveNdjsonStream(upstream.stream, { onFailure: (f) => failures.push(f) }),
     );
@@ -237,36 +279,23 @@ describe('createEveNdjsonStream', () => {
       { type: 'delta', text: 'partial' },
       { type: 'error', message: EVE_STREAM_MESSAGES.failed, code: 'failed' },
     ]);
-    expect(events.filter((e) => e.type === 'done')).toHaveLength(0);
-    expect(failures).toEqual([{ code: 'failed', detail: 'boom' }]);
+    expect(failures).toEqual([{ code: 'failed', detail: 'finish_reason: content_filter' }]);
   });
 
-  test('response.incomplete → error, no done', async () => {
-    const upstream = fakeUpstream([
-      DELTA('long'),
-      sse('response.incomplete', {
-        response: { id: 'resp_123', incomplete_details: { reason: 'max_output_tokens' } },
-      }),
-    ]);
+  test('a length finish → incomplete error, no done', async () => {
+    const upstream = fakeUpstream([TEXT('long'), FINISH('length')]);
     const events = await readNdjson(createEveNdjsonStream(upstream.stream));
     expect(events.at(-1)).toEqual({
       type: 'error',
       message: EVE_STREAM_MESSAGES.incomplete,
       code: 'incomplete',
     });
+    expect(events.some((e) => e.type === 'done')).toBe(false);
   });
 
-  test('an upstream error event → error, no done', async () => {
-    const upstream = fakeUpstream([sse('error', { code: 'server_error', message: 'nope' })]);
-    const events = await readNdjson(createEveNdjsonStream(upstream.stream));
-    expect(events).toEqual([
-      { type: 'error', message: EVE_STREAM_MESSAGES.failed, code: 'failed' },
-    ]);
-  });
-
-  test('upstream closing early → disconnected error, no done, no response id leaked', async () => {
+  test('upstream closing early → disconnected error, no done', async () => {
     const failures: unknown[] = [];
-    const upstream = fakeUpstream([CREATED, DELTA('cut')]);
+    const upstream = fakeUpstream([ROLE, TEXT('cut')]);
     upstream.close();
     const events = await readNdjson(
       createEveNdjsonStream(upstream.stream, { onFailure: (f) => failures.push(f) }),
@@ -275,13 +304,12 @@ describe('createEveNdjsonStream', () => {
       { type: 'delta', text: 'cut' },
       { type: 'error', message: EVE_STREAM_MESSAGES.disconnected, code: 'disconnected' },
     ]);
-    expect(JSON.stringify(events)).not.toContain('resp_123');
     expect(failures).toHaveLength(1);
   });
 
   test('an upstream read error → disconnected error and onFailure gets the cause', async () => {
     const seen: Array<{ failure: unknown; error: unknown }> = [];
-    const upstream = fakeUpstream([DELTA('a')]);
+    const upstream = fakeUpstream([TEXT('a')]);
     const cause = new Error('socket hang up');
     upstream.fail(cause);
     const events = await readNdjson(
@@ -294,8 +322,53 @@ describe('createEveNdjsonStream', () => {
     expect(seen[0].error).toBe(cause);
   });
 
+  test('an upstream that goes quiet → timeout error after the idle limit', async () => {
+    const failures: unknown[] = [];
+    const upstream = fakeUpstream([ROLE, TEXT('thinking...')]);
+    // Never closed, never sends again.
+    const started = Date.now();
+    const events = await readNdjson(
+      createEveNdjsonStream(upstream.stream, {
+        idleTimeoutMs: 30,
+        onFailure: (f) => failures.push(f),
+      }),
+    );
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(events).toEqual([
+      { type: 'delta', text: 'thinking...' },
+      { type: 'error', message: EVE_STREAM_MESSAGES.timeout, code: 'timeout' },
+    ]);
+    expect(failures).toEqual([{ code: 'timeout', detail: 'upstream stalled' }]);
+    expect(upstream.cancelled()).toBe(true);
+  });
+
+  test('a trickling upstream is cut off by the total limit', async () => {
+    const failures: unknown[] = [];
+    const upstream = fakeUpstream([ROLE]);
+    // A token every 10ms keeps the idle timer happy forever.
+    const drip = setInterval(() => upstream.push(TEXT('.')), 10);
+    try {
+      const events = await readNdjson(
+        createEveNdjsonStream(upstream.stream, {
+          idleTimeoutMs: 1000,
+          totalTimeoutMs: 80,
+          onFailure: (f) => failures.push(f),
+        }),
+      );
+      expect(events.at(-1)).toEqual({
+        type: 'error',
+        message: EVE_STREAM_MESSAGES.timeout,
+        code: 'timeout',
+      });
+      expect(events.filter((e) => e.type === 'delta').length).toBeGreaterThan(0);
+      expect(failures).toHaveLength(1);
+    } finally {
+      clearInterval(drip);
+    }
+  });
+
   test('cancelling the client stream cancels the upstream reader', async () => {
-    const upstream = fakeUpstream([CREATED, DELTA('a')]);
+    const upstream = fakeUpstream([ROLE, TEXT('a')]);
     const stream = createEveNdjsonStream(upstream.stream);
     const reader = stream.getReader();
     await reader.read();
@@ -303,20 +376,39 @@ describe('createEveNdjsonStream', () => {
     expect(upstream.cancelled()).toBe(true);
   });
 
-  test('aborting the request signal cancels the upstream without reporting a failure', async () => {
+  test('aborting while a read is pending is not reported as a failure', async () => {
+    // Regression: the abort cancels the upstream, the pending read then sees EOF,
+    // and that EOF used to be reported as a dropped connection.
     const failures: unknown[] = [];
     const abort = new AbortController();
-    const upstream = fakeUpstream([DELTA('a')]);
-    const stream = createEveNdjsonStream(upstream.stream, {
+    const upstream = fakeUpstream([TEXT('a')]);
+    const reader = createEveNdjsonStream(upstream.stream, {
       signal: abort.signal,
       onFailure: (f) => failures.push(f),
-    });
-    const reader = stream.getReader();
-    await reader.read();
+    }).getReader();
+    expect((await reader.read()).done).toBe(false);
+    const pending = reader.read(); // waiting on the upstream
     abort.abort();
     expect(upstream.cancelled()).toBe(true);
-    // Whatever the wrapper emits after that, an aborted visitor is not a Sentry-worthy failure.
-    await reader.cancel().catch(() => {});
+    // Drain whatever the wrapper emits after the abort.
+    for (let r = await pending; !r.done; r = await reader.read()) {
+      // keep reading until closed
+    }
+    expect(failures).toEqual([]);
+  });
+
+  test('a timeout after the visitor left is not reported either', async () => {
+    const failures: unknown[] = [];
+    const abort = new AbortController();
+    abort.abort();
+    const upstream = fakeUpstream([]);
+    await readNdjson(
+      createEveNdjsonStream(upstream.stream, {
+        signal: abort.signal,
+        idleTimeoutMs: 20,
+        onFailure: (f) => failures.push(f),
+      }),
+    );
     expect(failures).toEqual([]);
   });
 });

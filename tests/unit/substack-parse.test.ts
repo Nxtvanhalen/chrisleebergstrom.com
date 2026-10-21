@@ -82,7 +82,15 @@ describe('parseSubstackFeed', () => {
       <item><title>Lt</title><link>https://x.test/lt</link><pubDate>now</pubDate>
       <description><![CDATA[<p>a &lt; b</p><p>and more</p>]]></description></item>
       </channel></rss>`;
-    expect(parseSubstackFeed(xml).posts[0].contentSnippet).toBe('a < band more');
+    expect(parseSubstackFeed(xml).posts[0].contentSnippet).toBe('a < b and more');
+  });
+
+  test('line breaks and block boundaries keep words apart', () => {
+    const xml = `<rss version="2.0"><channel><title>T</title>
+      <item><title>Br</title><link>https://x.test/br</link><pubDate>now</pubDate>
+      <description><![CDATA[<h2>Title</h2>one<br>two<br/>three<ul><li>x</li><li>y</li></ul>]]></description></item>
+      </channel></rss>`;
+    expect(parseSubstackFeed(xml).posts[0].contentSnippet).toBe('Title one two three x y');
   });
 
   test('handles a feed with a single item (not wrapped in an array by the XML parser)', () => {

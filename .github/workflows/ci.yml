@@ -32,7 +32,7 @@ jobs:
     needs: check
     timeout-minutes: 15
     env:
-      OPENAI_API_KEY: placeholder
+      DEEPSEEK_API_KEY: placeholder
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -47,7 +47,7 @@ jobs:
     needs: check
     timeout-minutes: 25
     env:
-      OPENAI_API_KEY: placeholder
+      DEEPSEEK_API_KEY: placeholder
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
