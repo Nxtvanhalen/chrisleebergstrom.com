@@ -14,7 +14,7 @@ import ArchiveCard from './ArchiveCard';
 export const metadata: Metadata = {
   title: { absolute: 'Projects | Chris Lee Bergstrom — AI & Entertainment Tech' },
   description:
-    'Selected work and project archive from Chris Lee Bergstrom: agentic AI tools, entertainment-tech systems, and live-events software. Featuring The Underground, Byte, Chester, Fuel Estimator, Beacons, EVA, and more.',
+    'Selected work and project archive from Chris Lee Bergstrom: agentic AI tools, entertainment-tech systems, and live-events software. Featuring The Underground, Byte, Fuel Estimator, Beacons, EVA, and more.',
   alternates: { canonical: 'https://chrisleebergstrom.com/projects' },
   openGraph: {
     title: 'Projects | Chris Lee Bergstrom',
@@ -88,15 +88,6 @@ const projectsSchema = {
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
       description:
         'AI assistant that lives in your inbox. Email byte@firstlyte.co for thoughtful replies in under 30 seconds — no app, no login.',
-    },
-    {
-      '@type': 'SoftwareApplication',
-      name: 'Chester',
-      url: 'https://chesterchess.com',
-      applicationCategory: 'GameApplication',
-      operatingSystem: 'Web Browser',
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      description: 'AI chess game built in public to explore decision-making and game theory.',
     },
     {
       '@type': 'SoftwareApplication',
@@ -184,17 +175,15 @@ const projectsSchema = {
   ],
 };
 
-// Numbering continues from the live projects above (01–05).
+// Numbered after the live projects above (see the map below).
 const ARCHIVE = [
   {
-    code: '06',
     title: 'EVA',
     kind: 'Events virtual assistant',
     blurb:
       "Logistics overhead reducer for crews — routing, scheduling, crew management. Doesn't replace humans, lowers their cognitive load.",
   },
   {
-    code: '07',
     title: 'EVE',
     kind: 'Portfolio concierge',
     blurb:
@@ -202,42 +191,36 @@ const ARCHIVE = [
     eve: true,
   },
   {
-    code: '08',
     title: 'Glytch',
     kind: 'Local AI experiment',
     blurb:
       "Local, offline, no guardrails. An ongoing test of what's possible when an LLM runs on your own machine with full freedom.",
   },
   {
-    code: '09',
     title: 'JAMES',
     kind: 'Memory backbone',
     blurb:
       'Core memory and multi-agent orchestration. Long-term context and cross-agent state so the system learns instead of forgetting.',
   },
   {
-    code: '10',
     title: 'Multi-Agent Lab',
     kind: 'Skunkworks',
     blurb:
       'Prototyping federated agents and real-time work flows. Agents talking to agents, with humans in the loop where it matters.',
   },
   {
-    code: '11',
     title: 'Sandbox',
     kind: 'Hospitality AI',
     blurb:
       'Firebase-powered demand prediction for hospitality and venue strategy. Turns sales noise into operational insight.',
   },
   {
-    code: '12',
     title: 'TARS',
     kind: 'Local privacy-first AI',
     blurb:
       'On-device intelligence — your data, your hardware, your control. Pushes the privacy ceiling for sensitive workflows.',
   },
   {
-    code: '13',
     title: 'LogiRoute',
     kind: 'Touring logistics',
     blurb:
@@ -245,7 +228,6 @@ const ARCHIVE = [
     href: 'https://logi-route-a9c09ae8.base44.app',
   },
   {
-    code: '14',
     title: 'Guardian',
     kind: 'Web security',
     blurb:
@@ -306,7 +288,12 @@ export default async function ProjectsPage() {
 
             <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
               {ARCHIVE.map((item, i) => (
-                <ArchiveCard key={item.code} {...item} delay={i * 0.05} />
+                <ArchiveCard
+                  key={item.title}
+                  code={cardCode(LIVE_PROJECTS.length + i)}
+                  {...item}
+                  delay={i * 0.05}
+                />
               ))}
             </div>
           </div>

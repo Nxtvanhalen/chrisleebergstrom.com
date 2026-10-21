@@ -123,16 +123,6 @@ export function isSameOriginRequest(headers: Headers): boolean {
   }
 }
 
-// Render terminates TLS and fronts the app with its own proxy, which sets
-// X-Forwarded-For with the real client address first. That trust is only valid
-// behind Render: if the app is ever exposed directly, a client can spoof this
-// header and dodge the per-IP limiter (the global cap still holds).
-export function getClientIp(headers: Headers): string {
-  return (
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() || headers.get('x-real-ip') || 'unknown'
-  );
-}
-
 export class BodyTooLargeError extends Error {
   constructor(public readonly maxBytes: number) {
     super(`Body exceeds ${maxBytes} bytes`);

@@ -45,20 +45,6 @@ const PROJECTS = {
       fit: 'contain',
     },
   },
-  chester: {
-    title: 'Chester',
-    kind: 'AI chess study',
-    href: 'https://chesterchess.com',
-    stat: 'Live · chesterchess.com',
-    blurb:
-      'An AI chess game built in public to explore decision-making architecture and game theory. Powered by Deepseek so the consumer version stays free.',
-    image: {
-      src: '/images/CHESTER.png',
-      alt: 'Chester — chibi robot king with chess pieces, AI Chess Coach wordmark',
-      fit: 'contain',
-      glow: true,
-    },
-  },
   fuelEstimator: {
     title: 'Fuel Estimator',
     kind: 'Tour-bus fuel calculator',
@@ -100,7 +86,6 @@ export const FEATURED_PROJECTS: Project[] = [
 export const LIVE_PROJECTS: Project[] = [
   PROJECTS.underground,
   PROJECTS.byte,
-  PROJECTS.chester,
   PROJECTS.fuelEstimator,
   PROJECTS.beacons,
 ];

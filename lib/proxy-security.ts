@@ -98,11 +98,26 @@ export function isFromBlockedPrefix(ip: string, prefixes: readonly string[]): bo
   return prefixes.some((prefix) => ip.startsWith(prefix));
 }
 
-/** First hop of x-forwarded-for (set by Render's edge), else x-real-ip, else 'unknown'. */
+/**
+ * The visitor's IP, for the blocklist and EVE's rate limiter.
+ *
+ * Render's edge is Cloudflare, which sets CF-Connecting-IP itself and overwrites
+ * any value a client sends, so that is the only trustworthy source in production.
+ * X-Forwarded-For is not: Render appends to whatever the client sent, so its first
+ * entry is client-controlled (verified live on 2026-10-21). Without the Cloudflare
+ * header (local dev, tests) the last X-Forwarded-For hop, the one added by the
+ * nearest proxy, is the best guess.
+ */
 export function getClientIp(headers: Pick<Headers, 'get'>): string {
-  return (
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() || headers.get('x-real-ip') || 'unknown'
-  );
+  const cloudflare = headers.get('cf-connecting-ip')?.trim();
+  if (cloudflare) return cloudflare;
+  const lastHop = headers
+    .get('x-forwarded-for')
+    ?.split(',')
+    .map((hop) => hop.trim())
+    .filter(Boolean)
+    .at(-1);
+  return lastHop || headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
 /**

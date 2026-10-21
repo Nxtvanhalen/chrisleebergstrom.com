@@ -4,13 +4,13 @@ import { createRateLimiter } from '@/lib/eve-rate-limit';
 import { createEveNdjsonStream } from '@/lib/eve-stream';
 import {
   BodyTooLargeError,
-  getClientIp,
   isJsonContentType,
   isSameOriginRequest,
   MAX_BODY_BYTES,
   parseChatRequest,
   readTextWithLimit,
 } from '@/lib/eve-validation';
+import { getClientIp } from '@/lib/proxy-security';
 
 const EVE_MODEL = 'gpt-5-nano-2025-08-07';
 // Upper bound on reply length (reasoning tokens count too, but effort is
@@ -105,7 +105,6 @@ OTHER PROJECTS (the archive — on /projects)
 
 These exist but aren't the lead. Mention if asked, don't volunteer.
 
-* **Chester** — AI chess decision-making study. If models come up: it runs on gpt-5.2 and deepseek-chat. URL: https://chesterchess.com
 * **EVA** — Events Virtual Assistant; logistics overhead for crews.
 * **Glytch** — Local offline experiment.
 * **JAMES** — Core memory / multi-agent orchestration.

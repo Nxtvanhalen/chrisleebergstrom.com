@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   BodyTooLargeError,
   EVE_CONTEXTS,
-  getClientIp,
   isEveContext,
   isJsonContentType,
   isSameOriginRequest,
@@ -181,16 +180,6 @@ describe('isSameOriginRequest', () => {
   test('a request with neither header (non-browser client) passes through', () => {
     expect(isSameOriginRequest(new Headers())).toBe(true);
     expect(isSameOriginRequest(new Headers({ host: 'example.com' }))).toBe(true);
-  });
-});
-
-describe('getClientIp', () => {
-  test('first x-forwarded-for hop, then x-real-ip, then unknown', () => {
-    expect(getClientIp(new Headers({ 'x-forwarded-for': '198.51.100.7, 10.0.0.1' }))).toBe(
-      '198.51.100.7',
-    );
-    expect(getClientIp(new Headers({ 'x-real-ip': '198.51.100.8' }))).toBe('198.51.100.8');
-    expect(getClientIp(new Headers())).toBe('unknown');
   });
 });
 

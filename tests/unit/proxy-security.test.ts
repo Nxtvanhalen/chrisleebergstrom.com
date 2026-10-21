@@ -202,18 +202,28 @@ describe('IP blocking helpers', () => {
 });
 
 describe('getClientIp', () => {
-  test('prefers the first x-forwarded-for hop', () => {
+  test('trusts CF-Connecting-IP over anything a client can send', () => {
     const headers = new Headers({
-      'x-forwarded-for': ' 203.0.113.9 , 10.0.0.1',
+      'cf-connecting-ip': ' 203.0.113.9 ',
+      'x-forwarded-for': '198.51.100.1, 10.0.0.1',
       'x-real-ip': '10.0.0.2',
     });
     expect(getClientIp(headers)).toBe('203.0.113.9');
   });
 
+  test('never trusts the first x-forwarded-for hop (client-controlled behind Render)', () => {
+    const spoofed = new Headers({ 'x-forwarded-for': '198.51.100.1, 203.0.113.9' });
+    expect(getClientIp(spoofed)).toBe('203.0.113.9');
+    expect(getClientIp(new Headers({ 'x-forwarded-for': ' 203.0.113.9 ,, ' }))).toBe('203.0.113.9');
+  });
+
   test('falls back to x-real-ip, then "unknown"', () => {
     expect(getClientIp(new Headers({ 'x-real-ip': '10.0.0.2' }))).toBe('10.0.0.2');
     expect(getClientIp(new Headers())).toBe('unknown');
-    // An empty forwarded header must not shadow x-real-ip.
+    // An empty header must not shadow the next source.
+    expect(getClientIp(new Headers({ 'cf-connecting-ip': '', 'x-real-ip': '10.0.0.3' }))).toBe(
+      '10.0.0.3',
+    );
     expect(getClientIp(new Headers({ 'x-forwarded-for': '', 'x-real-ip': '10.0.0.3' }))).toBe(
       '10.0.0.3',
     );

@@ -22,7 +22,7 @@ What changed around the CSP and the proxy since the September state below:
 
 ## Current state (as of 2026-10-20)
 
-**Framework**: Next.js 16.3.6 (App Router), React 19.3, Tailwind 4.3 (CSS-first `@theme` in `styles/global.css`), motion 13.4, vanilla-cookieconsent 3.1.0, TypeScript 7. Bun 1.4.2 pinned via `.bun-version` (CI + Render). No OpenAI SDK — EVE calls the Responses API via `fetch`. Sentry (`@sentry/nextjs` 11) for error monitoring and CSP reports.
+**Framework**: Next.js 16 (App Router), React 19, Tailwind 4 (CSS-first `@theme` in `styles/global.css`), motion 14, vanilla-cookieconsent 3, TypeScript 7. Bun 1.4 pinned via `.bun-version` (CI + Render). No OpenAI SDK — EVE calls the Responses API via `fetch`. Sentry (`@sentry/nextjs` 11) for error monitoring and CSP reports.
 
 **Rendering**: every route renders dynamically per request via `export const dynamic = 'force-dynamic'` in `app/layout.tsx`. This is the cost of nonce-based CSP — there is no static prerendering on this site except `/sitemap.xml`. TTFB is +20–100ms vs the prior fully-static build; Render's instance billing model means cost impact is negligible at our traffic.
 
@@ -151,7 +151,10 @@ Video elements rendered nothing until their first frame decoded, and Safari's "e
 `proxy.ts` runs on Node (Next 16 dropped Edge support for `proxy`). Both `Buffer.from(...)` and `btoa(...)` work but `btoa` is shorter and runtime-agnostic. We use `btoa(crypto.randomUUID())` for the nonce.
 
 ### 10. Render `x-forwarded-proto` is load-bearing
-Render terminates TLS and forwards as `http://` internally, setting `x-forwarded-proto: https`. Our `upgrade-insecure-requests` conditional and `request.headers.get('x-forwarded-for')` IP detection both depend on this header being honored. Confirmed working; if Render's proxy config ever changes, both will need re-validation. `tests/integration/proxy.test.ts` pins the `x-forwarded-proto` behaviour.
+Render terminates TLS and forwards as `http://` internally, setting `x-forwarded-proto: https`. Our `upgrade-insecure-requests` conditional depends on this header being honored. Confirmed working; if Render's proxy config ever changes, it will need re-validation. `tests/integration/proxy.test.ts` pins the `x-forwarded-proto` behaviour.
+
+### 11. Never trust the first `x-forwarded-for` hop on Render
+Render appends to whatever `X-Forwarded-For` the client sent instead of replacing it, so the first entry is client-controlled. Until 2026-10-21 `getClientIp` read it, and a forged header both reset EVE's per-IP limit and dodged `BLOCKED_IPS` (verified against production). `getClientIp` (`lib/proxy-security.ts`) now trusts `CF-Connecting-IP`, which Render's Cloudflare edge sets and overwrites, and falls back to the last forwarded hop only outside Render.
 
 ---
 
@@ -161,7 +164,7 @@ Render terminates TLS and forwards as `http://` internally, setting `x-forwarded
 22 `style={{}}` props remain across 9 files (motion start values such as the animated border colour in `ProjectCard`, the canvas-adjacent hero, `global-error.tsx` which has no stylesheet on purpose). Most are necessary. Net security gain of removing the rest: small (`style-src-attr` is a much lower-leverage XSS vector than `script-src`). **Do opportunistically when touching files, not as a dedicated project.**
 
 ### 2. `'unsafe-eval'` in dev only — keep verifying motion doesn't trip prod
-`'unsafe-eval'` is in `script-src` only when `NODE_ENV === 'development'`. motion 13 doesn't use `eval`/`new Function()` on any route the e2e suite loads (it runs under the enforced production policy in Chromium). Real-traffic reports in Sentry remain the check for other browsers; if violations appear, add `'unsafe-eval'` to the prod CSP and re-evaluate.
+`'unsafe-eval'` is in `script-src` only when `NODE_ENV === 'development'`. motion 14 doesn't use `eval`/`new Function()` on any route the e2e suite loads (it runs under the enforced production policy in Chromium). Real-traffic reports in Sentry remain the check for other browsers; if violations appear, add `'unsafe-eval'` to the prod CSP and re-evaluate.
 
 ### 3. `backdrop-filter` blur restoration
 Removed in §7 above. Restoring requires either a WebKit fix for the stale-compositor bug or a different visual approach (e.g., always-solid header background with no blur claim). Low priority — current solid translucent header looks fine.

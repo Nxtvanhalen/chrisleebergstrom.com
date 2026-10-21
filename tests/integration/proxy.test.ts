@@ -175,8 +175,21 @@ describe('proxy() — BLOCKED_IPS', () => {
 
   test('other addresses are unaffected', async () => {
     const { proxy } = await loadProxy({ BLOCKED_IPS: '203.0.113.10' });
-    const res = proxy(makeRequest('/about', { 'x-forwarded-for': '203.0.113.11, 203.0.113.10' }));
+    const res = proxy(makeRequest('/about', { 'x-forwarded-for': '203.0.113.11' }));
     expect(res.status).toBe(200);
+  });
+
+  test('a blocked client cannot dodge the list by sending its own forwarding headers', async () => {
+    const { proxy } = await loadProxy({ BLOCKED_IPS: '203.0.113.10' });
+    // Behind Render, Cloudflare's CF-Connecting-IP is the real address; a forged
+    // X-Forwarded-For only adds hops in front of it.
+    const res = proxy(
+      makeRequest('/about', {
+        'cf-connecting-ip': '203.0.113.10',
+        'x-forwarded-for': '198.51.100.99, 203.0.113.10',
+      }),
+    );
+    expect(res.status).toBe(403);
   });
 });
 

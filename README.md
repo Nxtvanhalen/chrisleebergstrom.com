@@ -51,19 +51,19 @@ The CSP design, the Next.js migration it required and the gotchas hit along the 
 
 ## Tech stack
 
-| Layer | What | Version |
+| Layer | What | Major version |
 | --- | --- | --- |
-| Framework | Next.js (App Router, Turbopack), React | 16.3.6, 19.3.0 |
-| Language | TypeScript | 7.0.2 |
-| Styling | Tailwind CSS (CSS-first `@theme` in `styles/global.css`) | 4.3.3 |
-| Animation | motion (`MotionConfig reducedMotion="user"`) | 13.4.4 |
-| Runtime and package manager | Bun (`.bun-version`) | 1.4.2 |
-| Lint and format | Biome | 2.5.14 |
-| Errors and CSP reports | @sentry/nextjs | 11.1.0 |
-| E2E and accessibility | Playwright, @axe-core/playwright | 1.64.1, 4.14.0 |
-| Chat rendering | react-markdown, remark-gfm | 10.1.0, 4.0.1 |
-| RSS parsing | fast-xml-parser | 5.11.1 |
-| Cookie consent | vanilla-cookieconsent | 3.1.0 |
+| Framework | Next.js (App Router, Turbopack), React | 16, 19 |
+| Language | TypeScript | 7 |
+| Styling | Tailwind CSS (CSS-first `@theme` in `styles/global.css`) | 4 |
+| Animation | motion (`MotionConfig reducedMotion="user"`) | 14 |
+| Runtime and package manager | Bun (`.bun-version`) | 1.4 |
+| Lint and format | Biome | 2 |
+| Errors and CSP reports | @sentry/nextjs | 11 |
+| E2E and accessibility | Playwright, @axe-core/playwright | 1, 4 |
+| Chat rendering | react-markdown, remark-gfm | 10, 4 |
+| RSS parsing | fast-xml-parser | 5 |
+| Cookie consent | vanilla-cookieconsent | 3 |
 | AI | OpenAI Responses API via `fetch`, model `gpt-5-nano-2025-08-07` | – |
 | Analytics | Google Analytics 4 (consent-gated), Plausible (cookieless) | – |
 | Hosting | Render web service | – |
@@ -95,7 +95,7 @@ The CSP design, the Next.js migration it required and the gotchas hit along the 
 
 ## Running locally
 
-Requires Bun 1.4.2 (`.bun-version`).
+Requires Bun 1.4.3 (`.bun-version`).
 
 ```bash
 bun install
@@ -173,7 +173,6 @@ Live projects linked from the site:
 | --- | --- | --- |
 | The Underground | Venue-management sim, a browser game | [underground-venue-manager.onrender.com](https://underground-venue-manager.onrender.com) |
 | Byte | AI assistant over email: write to byte@firstlyte.co | [firstlyte.co](https://firstlyte.co) · [source](https://github.com/Nxtvanhalen/byte-mail) |
-| Chester | AI chess study | [chesterchess.com](https://chesterchess.com) |
 | Beacons | SPL and acoustic monitoring for live events | [beaconsio.com](https://beaconsio.com) |
 | Fuel Estimator | Tour-bus fuel cost calculator | [fuel-estimator.onrender.com](https://fuel-estimator.onrender.com) |
 

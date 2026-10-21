@@ -16,7 +16,7 @@ Everything below is maintained by hand; the block above is managed by `next dev`
 
 chrisleebergstrom.com: a Next.js 16 App Router personal site with a per-request nonce CSP and EVE, an OpenAI-backed chat concierge. Human-readable docs: `README.md`, `docs/DEVELOPMENT.md` (conventions, EVE internals, CSP rules), `docs/CSP-AND-NEXTJS-ROADMAP.md` (why the CSP is built this way and the gotchas).
 
-## Commands (Bun 1.4.2, see `.bun-version`)
+## Commands (Bun 1.4.3, see `.bun-version`)
 
 ```bash
 bun run check       # biome ci — lint + format, what CI runs (bun run lint:fix to fix)

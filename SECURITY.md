@@ -15,7 +15,7 @@ Include what you found, how to reproduce it, and what impact you think it has. Y
 
 Out of scope:
 
-- The separately hosted projects the site links to (The Underground, Byte, Beacons, Fuel Estimator, Chester) — they have their own repositories.
+- The separately hosted projects the site links to (The Underground, Byte, Beacons, Fuel Estimator) — they have their own repositories.
 - Third-party services the site uses (Render, Sentry, Plausible, Google Analytics, Substack, OpenAI).
 - Volume-based denial of service, and automated-scanner output without a demonstrated impact.
 
