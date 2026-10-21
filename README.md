@@ -117,7 +117,7 @@ The `docs/` folder contains the full development knowledge base:
 ├── app/                      # Next.js App Router (routes, layouts, API routes)
 │   ├── layout.tsx            # Root layout + per-request nonce CSP
 │   ├── page.tsx              # Landing page (server) + IndexClient
-│   ├── about/                # page.tsx (server) + AboutClient.tsx
+│   ├── about/                # page.tsx (server)
 │   ├── projects/             # Project archive
 │   ├── news/                 # Press coverage
 │   ├── blog/                 # Substack integration
@@ -128,7 +128,7 @@ The `docs/` folder contains the full development knowledge base:
 │       └── substack/route.ts # RSS feed proxy
 ├── components/               # React components (ChatPanel, Header, etc.)
 ├── context/                  # React context (shared chat state)
-├── styles/                   # Custom CSS (parallax, glow effects, animations)
+├── styles/                   # global.css — Tailwind theme tokens + header/menu/footer/chat CSS
 ├── public/                   # Static assets (images, videos, favicons, service worker)
 ├── docs/                     # AI-first documentation (see table above)
 └── proxy.ts                  # Next.js middleware (bot/IP blocking)

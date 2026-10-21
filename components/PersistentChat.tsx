@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
-import { useChat } from '../context/ChatContext';
+import { useChat } from '@/context/ChatContext';
 import ChatPanel from './ChatPanel';
 import EveAvatar from './EveAvatar';
 
@@ -182,7 +182,6 @@ export default function PersistentChat() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           className="bg-transparent border-none p-0 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-mauve rounded-lg"
-          style={{ background: 'none', border: 'none' }}
           aria-label={isOpen ? 'Close EVE AI chat' : 'Open EVE AI chat assistant'}
           aria-expanded={isOpen}
         >

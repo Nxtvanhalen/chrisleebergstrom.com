@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import Footer from '../../components/Footer';
-import Header from '../../components/Header';
-import { OG_IMAGES } from '../og-image';
+import { OG_IMAGES } from '@/app/og-image';
+import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 import BlogClient from './BlogClient';
 
 export const metadata: Metadata = {

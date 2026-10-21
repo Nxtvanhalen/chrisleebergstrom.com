@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Footer from '../../components/Footer';
-import Header from '../../components/Header';
-import { OG_IMAGES } from '../og-image';
-
-const VIOLET = '#9370DB';
+import { OG_IMAGES } from '@/app/og-image';
+import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'Beacons SMS Notifications',
@@ -22,24 +20,24 @@ export const metadata: Metadata = {
   },
 };
 
+const TERM = 'font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1';
+// In-prose links are underlined so they aren't distinguished by colour alone.
+const LINK = 'text-mauve underline underline-offset-2 transition-colors hover:text-white';
+
 export default function SmsPage() {
   return (
     <>
       <Header />
       <main
         id="main-content"
-        className="relative bg-black text-white"
+        tabIndex={-1}
+        className="relative bg-black text-white outline-none"
         aria-label="Beacons SMS Notifications"
       >
         {/* Header */}
         <section className="relative px-6 pt-32 pb-8 md:pt-40 md:pb-12">
           <div className="mx-auto max-w-3xl">
-            <p
-              className="font-mono text-xs tracking-[0.35em] uppercase mb-4"
-              style={{ color: VIOLET }}
-            >
-              Beacons
-            </p>
+            <p className="font-mono text-xs tracking-[0.35em] uppercase mb-4 text-mauve">Beacons</p>
             <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl uppercase tracking-tight text-white">
               SMS Notifications
             </h1>
@@ -48,10 +46,7 @@ export default function SmsPage() {
 
         {/* Body */}
         <section className="relative px-6 pb-20">
-          <div
-            className="mx-auto max-w-3xl font-body text-base md:text-lg leading-relaxed"
-            style={{ color: 'rgba(245, 245, 220, 0.85)' }}
-          >
+          <div className="mx-auto max-w-3xl font-body text-base md:text-lg leading-relaxed text-cream/85">
             <p>
               Beacons, operated by Christopher Lee Bergstrom (CLB Consulting), sends automated
               account and system-health notification text messages to the platform&apos;s
@@ -61,9 +56,7 @@ export default function SmsPage() {
 
             <dl className="mt-10 space-y-6">
               <div>
-                <dt className="font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1">
-                  Who receives messages
-                </dt>
+                <dt className={TERM}>Who receives messages</dt>
                 <dd>
                   Only the platform&apos;s named administrators. There is no public sign-up;
                   recipients are added individually after opting in.
@@ -71,9 +64,7 @@ export default function SmsPage() {
               </div>
 
               <div>
-                <dt className="font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1">
-                  How you opt in
-                </dt>
+                <dt className={TERM}>How you opt in</dt>
                 <dd>
                   Administrators opt in verbally, in person; a number is added only after the person
                   agrees.
@@ -81,30 +72,20 @@ export default function SmsPage() {
               </div>
 
               <div>
-                <dt className="font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1">
-                  Message frequency
-                </dt>
+                <dt className={TERM}>Message frequency</dt>
                 <dd>Varies based on system events.</dd>
               </div>
 
               <div>
-                <dt className="font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1">
-                  Cost
-                </dt>
+                <dt className={TERM}>Cost</dt>
                 <dd>Message and data rates may apply.</dd>
               </div>
 
               <div>
-                <dt className="font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1">
-                  Opt out / help
-                </dt>
+                <dt className={TERM}>Opt out / help</dt>
                 <dd>
                   Reply STOP to unsubscribe at any time, or HELP for help. You can also contact{' '}
-                  <a
-                    href="mailto:chris@blackeyedproductionsusa.com"
-                    className="transition-colors hover:text-white"
-                    style={{ color: VIOLET }}
-                  >
+                  <a href="mailto:chris@blackeyedproductionsusa.com" className={LINK}>
                     chris@blackeyedproductionsusa.com
                   </a>
                   .
@@ -112,17 +93,11 @@ export default function SmsPage() {
               </div>
 
               <div>
-                <dt className="font-heading text-lg md:text-xl uppercase tracking-tight text-white mb-1">
-                  Privacy
-                </dt>
+                <dt className={TERM}>Privacy</dt>
                 <dd>
                   We will not share your mobile information with third parties for marketing
                   purposes. See our{' '}
-                  <Link
-                    href="/privacy"
-                    className="transition-colors hover:text-white"
-                    style={{ color: VIOLET }}
-                  >
+                  <Link href="/privacy" className={LINK}>
                     Privacy Policy
                   </Link>
                   .
@@ -133,8 +108,7 @@ export default function SmsPage() {
             <div className="mt-16 text-center">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.3em] uppercase transition-colors hover:text-white"
-                style={{ color: VIOLET }}
+                className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.3em] uppercase text-mauve transition-colors hover:text-white"
               >
                 ← Back to the work
               </Link>

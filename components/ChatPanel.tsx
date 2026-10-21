@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useChat } from '../context/ChatContext';
+import { useChat } from '@/context/ChatContext';
 import {
   CHAT_HISTORY_KEY,
   type ChatMessage,
@@ -13,8 +13,8 @@ import {
   RESPONSE_ID_KEY,
   serializeHistory,
   serializeResponseId,
-} from '../lib/eve-storage';
-import type { EveStreamEvent } from '../lib/eve-stream';
+} from '@/lib/eve-storage';
+import type { EveStreamEvent } from '@/lib/eve-stream';
 import EveAvatar from './EveAvatar';
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -113,6 +113,7 @@ export default function ChatPanel() {
   // Last completed EVE reply, read out by the aria-live region. Updated once per
   // reply rather than per streamed token so screen readers aren't flooded.
   const [announcement, setAnnouncement] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Drives the smooth typewriter reveal; held in a ref so we can cancel it on unmount.
@@ -120,6 +121,8 @@ export default function ChatPanel() {
   // In-flight /api/chat request, aborted if the panel unmounts mid-reply.
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(false);
+  // Set by a user send: once the reply settles, focus goes back to the input.
+  const refocusRef = useRef(false);
 
   // Restore persisted state on mount, then move focus into the panel (WCAG
   // 2.4.3). preventScroll keeps the page from jumping when the panel opens.
@@ -155,6 +158,20 @@ export default function ChatPanel() {
     }
   }, [messages, isStreaming]);
 
+  // Return focus to the input after a reply (or failure). The input is
+  // `disabled` while busy, so focusing it from inside the send handler is a
+  // no-op and focus falls to <body>; this runs after the re-render that
+  // re-enables it. Skipped if the visitor has meanwhile focused something
+  // outside the panel.
+  const busy = isTyping || isStreaming;
+  useEffect(() => {
+    if (busy || !refocusRef.current) return;
+    refocusRef.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && !rootRef.current?.contains(active)) return;
+    inputRef.current?.focus({ preventScroll: true });
+  }, [busy]);
+
   const clearResponseId = () => {
     setResponseId(null);
     storageRemove(RESPONSE_ID_KEY);
@@ -179,6 +196,7 @@ export default function ChatPanel() {
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    refocusRef.current = true;
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -229,7 +247,6 @@ export default function ChatPanel() {
       replaceLast(text, note);
       setAnnouncement(note ? `${text} ${note}` : text);
       setIsStreaming(false);
-      inputRef.current?.focus({ preventScroll: true });
     };
 
     const tick = (ts: number) => {
@@ -394,7 +411,6 @@ export default function ChatPanel() {
       }
       setAnnouncement(errorText);
       setIsStreaming(false);
-      inputRef.current?.focus({ preventScroll: true });
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
       // isStreaming is cleared by finalizeReply (or the catch) so the caret/raw
@@ -403,11 +419,10 @@ export default function ChatPanel() {
     }
   };
 
-  const busy = isTyping || isStreaming;
   const hasConversation = messages.length > 1 || responseId !== null;
 
   return (
-    <div className="flex flex-col h-full font-body">
+    <div ref={rootRef} className="flex flex-col h-full font-body">
       <div ref={containerRef} className="flex-1 overflow-y-auto p-4 bg-transparent">
         <div className="flex flex-col space-y-3">
           {messages.map((msg, idx) => {
@@ -474,7 +489,7 @@ export default function ChatPanel() {
       <form onSubmit={sendMessage} className="flex border-t border-mauve/30 bg-black/30">
         <input
           ref={inputRef}
-          className="chat-input flex-1 p-4 bg-transparent text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-mauve/50 rounded-none"
+          className="flex-1 p-4 bg-transparent text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-mauve/50 rounded-none"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={

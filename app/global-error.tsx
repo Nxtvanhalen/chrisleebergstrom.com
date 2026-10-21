@@ -3,6 +3,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { Chakra_Petch, Newsreader } from 'next/font/google';
 import { useEffect } from 'react';
+import { MAUVE, mauve } from '@/lib/theme';
 
 // global-error replaces the root layout entirely, so nothing from layout.tsx
 // (fonts, global.css, providers) exists here. Fonts are loaded again and every
@@ -10,7 +11,6 @@ import { useEffect } from 'react';
 const chakraPetch = Chakra_Petch({ subsets: ['latin'], weight: ['600'], display: 'swap' });
 const newsreader = Newsreader({ subsets: ['latin'], weight: ['400'], display: 'swap' });
 
-const VIOLET = '#9370DB';
 const CREAM = 'rgba(245, 245, 220, 0.82)';
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 
@@ -68,7 +68,7 @@ export default function GlobalError({
                 fontSize: '0.75rem',
                 letterSpacing: '0.35em',
                 textTransform: 'uppercase',
-                color: VIOLET,
+                color: MAUVE,
                 margin: '0 0 1rem',
               }}
             >
@@ -118,10 +118,10 @@ export default function GlobalError({
                 onClick={reset}
                 style={{
                   ...buttonBase,
-                  background: VIOLET,
+                  background: MAUVE,
                   color: '#000',
                   border: 'none',
-                  boxShadow: '0 0 30px rgba(147, 112, 219, 0.4)',
+                  boxShadow: `0 0 30px ${mauve(0.4)}`,
                 }}
               >
                 Try again
@@ -133,8 +133,8 @@ export default function GlobalError({
                   ...buttonBase,
                   padding: '1rem 2rem',
                   background: 'transparent',
-                  color: VIOLET,
-                  border: '1px solid rgba(147, 112, 219, 0.5)',
+                  color: MAUVE,
+                  border: `1px solid ${mauve(0.5)}`,
                 }}
               >
                 ← Back to the work

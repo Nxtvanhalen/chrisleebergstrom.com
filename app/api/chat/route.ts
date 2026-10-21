@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
-import { createRateLimiter } from '../../../lib/eve-rate-limit';
-import { createEveNdjsonStream } from '../../../lib/eve-stream';
+import { createRateLimiter } from '@/lib/eve-rate-limit';
+import { createEveNdjsonStream } from '@/lib/eve-stream';
 import {
   BodyTooLargeError,
   getClientIp,
@@ -10,7 +10,7 @@ import {
   MAX_BODY_BYTES,
   parseChatRequest,
   readTextWithLimit,
-} from '../../../lib/eve-validation';
+} from '@/lib/eve-validation';
 
 const EVE_MODEL = 'gpt-5-nano-2025-08-07';
 // Upper bound on reply length (reasoning tokens count too, but effort is

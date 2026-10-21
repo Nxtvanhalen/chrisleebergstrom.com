@@ -2,14 +2,13 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
-import Contact from '../components/Contact';
-import History from '../components/History';
-import Method from '../components/Method';
-import OffTheClock from '../components/OffTheClock';
-import SelectedWork from '../components/SelectedWork';
-import Skills from '../components/Skills';
-
-const VIOLET = '#9370DB';
+import Contact from '@/components/Contact';
+import History from '@/components/History';
+import Method from '@/components/Method';
+import OffTheClock from '@/components/OffTheClock';
+import SelectedWork from '@/components/SelectedWork';
+import Skills from '@/components/Skills';
+import { MAUVE, mauve } from '@/lib/theme';
 
 type Node = {
   x: number;
@@ -105,7 +104,7 @@ function useCircuitNetwork(canvasRef: React.RefObject<HTMLCanvasElement | null>)
           const distSq = dx * dx + dy * dy;
           if (distSq < connectDist * connectDist) {
             const opacity = (1 - Math.sqrt(distSq) / connectDist) * 0.35;
-            ctx.strokeStyle = `rgba(147, 112, 219, ${opacity})`;
+            ctx.strokeStyle = mauve(opacity);
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
@@ -116,7 +115,7 @@ function useCircuitNetwork(canvasRef: React.RefObject<HTMLCanvasElement | null>)
 
       // Draw nodes.
       for (const n of nodes) {
-        ctx.fillStyle = VIOLET;
+        ctx.fillStyle = MAUVE;
         ctx.beginPath();
         ctx.arc(n.x, n.y, 1.4, 0, Math.PI * 2);
         ctx.fill();
@@ -214,7 +213,7 @@ function useKineticName(nameRef: React.RefObject<HTMLElement | null>) {
 
     const apply = () => {
       el.style.transform = `perspective(900px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
-      el.style.textShadow = `${(tiltY * 1.5).toFixed(1)}px ${(-tiltX * 1.2).toFixed(1)}px 24px rgba(147, 112, 219, 0.45)`;
+      el.style.textShadow = `${(tiltY * 1.5).toFixed(1)}px ${(-tiltX * 1.2).toFixed(1)}px 24px ${mauve(0.45)}`;
     };
 
     const tick = () => {
@@ -271,16 +270,14 @@ export default function IndexClient() {
         ref={canvasRef}
         aria-hidden="true"
         tabIndex={-1}
-        className="fixed inset-0 w-full h-full pointer-events-none"
-        style={{ zIndex: 0 }}
+        className="fixed inset-0 z-0 w-full h-full pointer-events-none"
       />
 
       {/* Soft radial vignette so text reads cleanly over the network — also fixed */}
       <div
         aria-hidden="true"
-        className="fixed inset-0 pointer-events-none"
+        className="fixed inset-0 z-1 pointer-events-none"
         style={{
-          zIndex: 1,
           background:
             'radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.45) 65%, rgba(0,0,0,0.75) 100%)',
         }}
@@ -288,7 +285,7 @@ export default function IndexClient() {
 
       {/* One <main> for the whole page, like every other route, so the skip
           link and landmark navigation reach every section — not just the hero. */}
-      <main id="main-content" className="relative" style={{ zIndex: 10 }}>
+      <main id="main-content" tabIndex={-1} className="relative z-10 outline-none">
         <section
           aria-labelledby="hero-heading"
           className="relative min-h-screen flex flex-col items-center justify-center px-6 py-24"
@@ -305,16 +302,13 @@ export default function IndexClient() {
                 fights motion's own transform on the h1. */}
             <span ref={nameRef} className="block will-change-transform">
               <span className="block text-white">Chris Lee</span>
-              <span className="block" style={{ color: VIOLET }}>
-                Bergstrom
-              </span>
+              <span className="block text-mauve">Bergstrom</span>
             </span>
           </motion.h1>
 
           <motion.p
             data-speakable="true"
-            className="font-body text-base md:text-lg lg:text-xl text-center max-w-2xl mt-10 leading-relaxed"
-            style={{ color: 'rgba(245, 245, 220, 0.92)' }}
+            className="font-body text-base md:text-lg lg:text-xl text-center max-w-2xl mt-10 leading-relaxed text-cream/92"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.65 }}
@@ -334,10 +328,9 @@ export default function IndexClient() {
               Scroll
             </span>
             <motion.span
-              className="block w-px h-8 bg-white/40"
+              className="block w-px h-8 bg-white/40 origin-top"
               animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.3, 0.9, 0.3] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ transformOrigin: 'top' }}
             />
           </motion.div>
         </section>

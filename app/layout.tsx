@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import { Chakra_Petch, JetBrains_Mono, Newsreader } from 'next/font/google';
 import { headers } from 'next/headers';
-import AnalyticsTracker from '../components/AnalyticsTracker';
-import CookieConsentLoader from '../components/CookieConsentLoader';
-import MotionProvider from '../components/MotionProvider';
-import PersistentChat from '../components/PersistentChat';
-import { ChatProvider } from '../context/ChatContext';
+import AnalyticsTracker from '@/components/AnalyticsTracker';
+import CookieConsentLoader from '@/components/CookieConsentLoader';
+import MotionProvider from '@/components/MotionProvider';
+import PersistentChat from '@/components/PersistentChat';
+import { ChatProvider } from '@/context/ChatContext';
 import { OG_IMAGES } from './og-image';
-import '../styles/global.css';
+import '@/styles/global.css';
 
 // Plausible Analytics — privacy-first, cookieless, and consent-free, so unlike
 // GA (which is gated behind CookieConsentLoader) it runs for every visitor.
@@ -17,16 +17,21 @@ import '../styles/global.css';
 const PLAUSIBLE_SRC = 'https://plausible.io/js/pa-MldANz3p0vcZConl9x759.js';
 const isProd = process.env.NODE_ENV === 'production';
 
+// Only the weights the site actually renders are loaded; next/font preloads
+// every file it is given, so unused weights cost real bytes.
+//   Chakra Petch (headings): 400 everywhere, 500 drawer "Connect" label, 600 drawer links.
+//   Newsreader (body): 400, 500 (chat tooltip), 700 (<strong>, chat labels); 400 italic for <em>.
+//   JetBrains Mono: 400, and 600 for the bold "Live" badge.
 const chakraPetch = Chakra_Petch({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600'],
   variable: '--font-chakra-petch',
   display: 'swap',
 });
 
 const newsreader = Newsreader({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '700'],
   style: ['normal', 'italic'],
   variable: '--font-newsreader',
   display: 'swap',
@@ -34,7 +39,7 @@ const newsreader = Newsreader({
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: ['400', '600'],
   variable: '--font-jetbrains-mono',
   display: 'swap',
 });

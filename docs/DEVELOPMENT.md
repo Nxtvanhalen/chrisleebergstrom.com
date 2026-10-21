@@ -58,24 +58,25 @@ EVE (Entertainment Vision Engine) is an AI chatbot embedded in the website, serv
 │   ├── IndexClient.tsx        # Homepage client shell (hero canvas, sections)
 │   ├── not-found.tsx          # 404
 │   ├── sitemap.ts             # Dynamic sitemap
-│   ├── about/                 # page.tsx (server) + AboutClient.tsx
-│   ├── projects/              # page.tsx + ProjectsClient.tsx — project archive
-│   ├── news/                  # page.tsx + NewsClient.tsx — press coverage
+│   ├── about/                 # page.tsx (server) — bio, philosophy, aliases
+│   ├── projects/              # page.tsx (server) + ArchiveCard.tsx — project archive
+│   ├── news/                  # page.tsx (server) + PressCard.tsx — press coverage
 │   ├── blog/                  # page.tsx + BlogClient.tsx — Substack ("Musings")
 │   ├── faq/                   # page.tsx + FaqClient.tsx — FAQ + structured data
-│   ├── privacy/               # page.tsx + PrivacyClient.tsx — GDPR privacy policy
+│   ├── privacy/               # page.tsx (server) — GDPR privacy policy
 │   └── api/
 │       ├── chat/route.ts      # EVE AI endpoint (GPT-5 Responses API)
 │       └── substack/route.ts  # Substack RSS feed proxy
-├── components/                # ChatPanel, Header, Footer, EveAvatar, Method,
-│                              #   History, OffTheClock, SelectedWork, Skills,
-│                              #   SectionTracker, CookieConsentLoader, AnalyticsTracker
+├── components/                # Header, Footer, SocialLinks, Reveal (scroll fade),
+│                              #   SectionHeading, PageHero, PageCta, DetailRow, ProjectCard,
+│                              #   Method, Skills, History, SelectedWork, OffTheClock, Contact,
+│                              #   ChatPanel, PersistentChat, EveAvatar, CookieConsentLoader,
+│                              #   AnalyticsTracker
 ├── context/                   # React context for shared chat state
 ├── styles/
-│   └── global.css             # All custom CSS: parallax, glow effects, animations
+│   └── global.css             # Tailwind theme tokens + header/menu/footer/chat CSS
 ├── public/
 │   ├── images/                # Site imagery (WebP optimized)
-│   │   ├── gallery/           # Project gallery images
 │   │   ├── profile/           # Chris's profile photos
 │   │   ├── projects/          # Project thumbnail images
 │   │   └── Favicon/           # Full favicon set (note: capitalized folder name)

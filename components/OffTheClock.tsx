@@ -2,9 +2,19 @@
 
 import { motion } from 'motion/react';
 import Image from 'next/image';
-import { useChat } from '../context/ChatContext';
+import { useChat } from '@/context/ChatContext';
+import { SUBSTACK_URL } from '@/lib/site';
+import { mauve } from '@/lib/theme';
+import Reveal from './Reveal';
+import SectionHeading from './SectionHeading';
 
-const VIOLET = '#9370DB';
+// Shared by both cards. The border colour is animated on hover, so its base
+// value is set inline (see lib/theme).
+const CARD =
+  'group relative block overflow-hidden rounded-xs border bg-black/40 backdrop-blur-md transition-all duration-500';
+const CARD_STYLE = { borderColor: mauve(0.22) };
+const CARD_HOVER = { borderColor: mauve(0.7), boxShadow: `0 0 32px ${mauve(0.25)}` };
+const HOVER_WASH = { background: `linear-gradient(180deg, ${mauve(0)} 60%, ${mauve(0.18)} 100%)` };
 
 export default function OffTheClock() {
   const { toggleChat } = useChat();
@@ -16,39 +26,25 @@ export default function OffTheClock() {
       className="relative px-6 py-12 md:py-16 lg:py-20"
     >
       <div className="mx-auto max-w-6xl">
-        <motion.h2
-          id="offclock-heading"
-          className="font-heading text-4xl md:text-5xl lg:text-6xl uppercase tracking-tight text-white"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-        >
-          Off the Clock
-        </motion.h2>
+        <SectionHeading id="offclock-heading">Off the Clock</SectionHeading>
 
-        <motion.p
-          className="font-body text-base md:text-lg max-w-2xl mt-6 leading-relaxed"
-          style={{ color: 'rgba(245, 245, 220, 0.72)' }}
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.7, delay: 0.2 }}
+        <Reveal
+          as="p"
+          duration={0.7}
+          delay={0.2}
+          className="font-body text-base md:text-lg max-w-2xl mt-6 leading-relaxed text-cream/72"
         >
           Same brain, different mediums.
-        </motion.p>
+        </Reveal>
 
         <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
           <motion.a
-            href="https://chrisleebergstrom.substack.com/p/the-archivist"
+            href={`${SUBSTACK_URL}/p/the-archivist`}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative block overflow-hidden rounded-xs bg-black/40 backdrop-blur-md transition-all duration-500"
-            style={{ border: '1px solid rgba(147, 112, 219, 0.22)' }}
-            whileHover={{
-              borderColor: 'rgba(147, 112, 219, 0.7)',
-              boxShadow: '0 0 32px rgba(147, 112, 219, 0.25)',
-            }}
+            className={CARD}
+            style={CARD_STYLE}
+            whileHover={CARD_HOVER}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
@@ -65,27 +61,18 @@ export default function OffTheClock() {
               <div
                 aria-hidden="true"
                 className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                style={{
-                  background:
-                    'linear-gradient(180deg, rgba(147,112,219,0) 60%, rgba(147,112,219,0.18) 100%)',
-                }}
+                style={HOVER_WASH}
               />
             </div>
 
             <div className="p-7 lg:p-10">
-              <p
-                className="font-mono text-xs tracking-[0.35em] uppercase mb-6"
-                style={{ color: VIOLET }}
-              >
+              <p className="font-mono text-xs tracking-[0.35em] uppercase mb-6 text-mauve">
                 Substack · Serialized novella
               </p>
               <h3 className="font-heading text-2xl md:text-3xl uppercase tracking-tight text-white">
                 The Archivists
               </h3>
-              <p
-                className="font-body text-base mt-5 leading-relaxed"
-                style={{ color: 'rgba(245, 245, 220, 0.82)' }}
-              >
+              <p className="font-body text-base mt-5 leading-relaxed text-cream/82">
                 A serialized novella, in progress. Same brain that built the live shows and the
                 software — different medium, closer to where the fiction was always headed.
               </p>
@@ -98,12 +85,9 @@ export default function OffTheClock() {
           <motion.button
             type="button"
             onClick={toggleChat}
-            className="group relative block text-left w-full overflow-hidden rounded-xs bg-black/40 backdrop-blur-md cursor-pointer transition-all duration-500"
-            style={{ border: '1px solid rgba(147, 112, 219, 0.22)' }}
-            whileHover={{
-              borderColor: 'rgba(147, 112, 219, 0.7)',
-              boxShadow: '0 0 32px rgba(147, 112, 219, 0.25)',
-            }}
+            className={`${CARD} text-left w-full cursor-pointer`}
+            style={CARD_STYLE}
+            whileHover={CARD_HOVER}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
@@ -112,8 +96,7 @@ export default function OffTheClock() {
             <div
               className="relative aspect-video w-full overflow-hidden"
               style={{
-                background:
-                  'radial-gradient(ellipse at center, rgba(147,112,219,0.15) 0%, rgba(0,0,0,1) 70%)',
+                background: `radial-gradient(ellipse at center, ${mauve(0.15)} 0%, #000 70%)`,
               }}
             >
               {/* Blurred backdrop copy — fills the frame behind the sharp version.
@@ -123,13 +106,8 @@ export default function OffTheClock() {
                 alt=""
                 aria-hidden="true"
                 fill
-                className="object-contain pointer-events-none"
+                className="object-contain pointer-events-none blur-[18px] saturate-[1.1] scale-[1.08] opacity-85"
                 sizes="(min-width: 768px) 50vw, 100vw"
-                style={{
-                  filter: 'blur(18px) saturate(1.1)',
-                  transform: 'scale(1.08)',
-                  opacity: 0.85,
-                }}
               />
 
               {/* Sharp foreground — the radial mask fades to transparent at the borders,
@@ -149,27 +127,18 @@ export default function OffTheClock() {
               <div
                 aria-hidden="true"
                 className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                style={{
-                  background:
-                    'linear-gradient(180deg, rgba(147,112,219,0) 60%, rgba(147,112,219,0.18) 100%)',
-                }}
+                style={HOVER_WASH}
               />
             </div>
 
             <div className="p-7 lg:p-10">
-              <p
-                className="font-mono text-xs tracking-[0.35em] uppercase mb-6"
-                style={{ color: VIOLET }}
-              >
+              <p className="font-mono text-xs tracking-[0.35em] uppercase mb-6 text-mauve">
                 Working demo · AI concierge
               </p>
               <h3 className="font-heading text-2xl md:text-3xl uppercase tracking-tight text-white">
                 EVE
               </h3>
-              <p
-                className="font-body text-base mt-5 leading-relaxed"
-                style={{ color: 'rgba(245, 245, 220, 0.82)' }}
-              >
+              <p className="font-body text-base mt-5 leading-relaxed text-cream/82">
                 The site's own AI concierge. Knows the work, the road, and how to reach me. Not a
                 widget — a working demo of how the build process actually runs.
               </p>

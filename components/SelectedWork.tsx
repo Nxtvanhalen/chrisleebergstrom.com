@@ -1,101 +1,8 @@
-'use client';
-
-import { motion } from 'motion/react';
-import Image from 'next/image';
 import Link from 'next/link';
-
-const VIOLET = '#9370DB';
-
-type WorkCardProps = {
-  code: string;
-  title: string;
-  kind: string;
-  blurb: string;
-  stat: string;
-  href: string;
-  visual: React.ReactNode;
-};
-
-function WorkCard({ code, title, kind, blurb, stat, href, visual }: WorkCardProps) {
-  return (
-    <motion.a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative block overflow-hidden rounded-xs bg-black/40 backdrop-blur-md transition-all duration-500"
-      style={{
-        border: '1px solid rgba(147, 112, 219, 0.25)',
-      }}
-      whileHover={{
-        scale: 1.01,
-        borderColor: 'rgba(147, 112, 219, 0.9)',
-        boxShadow: '0 0 40px rgba(147, 112, 219, 0.35)',
-        transition: { duration: 0.3 },
-      }}
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.7 }}
-    >
-      <div className="relative aspect-video w-full overflow-hidden bg-black">
-        {visual}
-        {/* Hover wash — barely-there violet across the visual */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(147,112,219,0) 60%, rgba(147,112,219,0.15) 100%)',
-          }}
-        />
-      </div>
-
-      <div className="p-6 lg:p-8">
-        <div className="mb-4 flex items-center justify-between gap-4 text-[10px] font-mono uppercase tracking-[0.3em]">
-          <span className="text-white/50">
-            {code} · {kind}
-          </span>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-xs border px-2 py-1 text-[9px] font-bold"
-            style={{
-              borderColor: VIOLET,
-              color: VIOLET,
-            }}
-          >
-            <span
-              aria-hidden="true"
-              className="inline-block h-1.5 w-1.5 rounded-full"
-              style={{ background: VIOLET, boxShadow: `0 0 6px ${VIOLET}` }}
-            />
-            Live
-          </span>
-        </div>
-
-        <h3 className="font-heading text-3xl md:text-4xl uppercase tracking-tight leading-none text-white">
-          {title}
-        </h3>
-
-        <p
-          className="font-body text-base md:text-lg mt-5 leading-relaxed"
-          style={{ color: 'rgba(245, 245, 220, 0.82)' }}
-        >
-          {blurb}
-        </p>
-
-        <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-mono uppercase tracking-[0.25em]">
-          <span style={{ color: VIOLET }}>{stat}</span>
-          <span
-            className="inline-flex items-center gap-2 text-white/70 transition-all duration-300 group-hover:gap-3 group-hover:text-white"
-            aria-hidden="true"
-          >
-            Visit
-            <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-          </span>
-        </div>
-      </div>
-    </motion.a>
-  );
-}
+import { cardCode, FEATURED_PROJECTS } from '@/lib/projects';
+import ProjectCard from './ProjectCard';
+import Reveal from './Reveal';
+import SectionHeading from './SectionHeading';
 
 export default function SelectedWork() {
   return (
@@ -105,106 +12,20 @@ export default function SelectedWork() {
       className="relative px-6 py-12 md:py-16 lg:py-20"
     >
       <div className="mx-auto max-w-6xl">
-        <motion.h2
-          id="work-heading"
-          className="font-heading text-4xl md:text-5xl lg:text-6xl uppercase tracking-tight text-white"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-        >
-          Selected Work
-        </motion.h2>
+        <SectionHeading id="work-heading">Selected Work</SectionHeading>
 
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-          <WorkCard
-            code="01"
-            title="The Underground"
-            kind="Venue-management sim"
-            href="https://underground-venue-manager.onrender.com"
-            stat="Live · Browser game"
-            blurb="Run a small underground music venue — book bands, keep the crew right, dodge incidents, balance the books. A PNW dive-bar sim in cyberpunk-noir. Twenty years of running venues, turned into a game."
-            visual={
-              <Image
-                src="/images/COVER.jpg"
-                alt="The Underground — cyberpunk-noir illustration of a neon-lit dive bar with crowd queued under rain, branded marquee, and venue facade"
-                fill
-                className="object-cover"
-                sizes="(min-width: 1024px) 50vw, 100vw"
-              />
-            }
-          />
-
-          <WorkCard
-            code="02"
-            title="Byte"
-            kind="AI assistant over email"
-            href="https://firstlyte.co"
-            stat="Live · firstlyte.co"
-            blurb="An AI assistant that lives in your inbox. Email byte@firstlyte.co, get a thoughtful reply in under 30 seconds — no app, no login, no account. Handles attachments, remembers threads, routes to the right model."
-            visual={
-              <Image
-                src="/images/ByteEdit.jpeg"
-                alt="Byte — AI assistant over email; brand sheet showing the BYTE wordmark, the B logo, and the prioritize / understand / remember / act process flow"
-                fill
-                className="object-contain"
-                sizes="(min-width: 1024px) 50vw, 100vw"
-              />
-            }
-          />
-
-          <WorkCard
-            code="03"
-            title="Beacons"
-            kind="SPL & acoustic monitoring"
-            href="https://beaconsio.com"
-            stat="Live · beaconsio.com"
-            blurb="iPhone-based SPL and acoustic monitoring for live events. Cloud-based logging, real-time analysis, and predictive insight. Protects patrons and staff; keeps neighbors and regulators happy. Operated by Christopher Lee Bergstrom (CLB Consulting)."
-            visual={
-              <Image
-                src="/images/projects/beacons.png"
-                alt="Beacons — iPhone-based SPL and acoustic monitoring dashboard for live events"
-                fill
-                className="object-cover"
-                sizes="(min-width: 1024px) 50vw, 100vw"
-              />
-            }
-          />
-
-          <WorkCard
-            code="04"
-            title="Fuel Estimator"
-            kind="Tour-bus fuel calculator"
-            href="https://fuel-estimator.onrender.com"
-            stat="Live · fuel-estimator.onrender.com"
-            blurb="A tour-bus fuel cost calculator for the road. Estimate fuel spend across routes, miles, and price-per-gallon so budgets hold up before the wheels roll. The arithmetic every tour manager does on a napkin — turned into a clean, shareable tool."
-            visual={
-              <div
-                className="relative h-full w-full"
-                style={{
-                  background:
-                    'radial-gradient(ellipse at center, rgba(147,112,219,0.18) 0%, rgba(0,0,0,1) 70%)',
-                }}
-              >
-                <Image
-                  src="/images/projects/fuel-estimator.png"
-                  alt="Fuel Estimator — tour-bus fuel cost calculator logo with a fuel pump, gauge, and mountain road"
-                  fill
-                  className="object-contain"
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                />
-              </div>
-            }
-          />
+          {FEATURED_PROJECTS.map((project, i) => (
+            <ProjectCard
+              key={project.title}
+              code={cardCode(i)}
+              project={project}
+              variant="featured"
+            />
+          ))}
         </div>
 
-        <motion.div
-          className="mt-10 flex justify-center md:justify-end"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
+        <Reveal margin="-60px" delay={0.3} className="mt-10 flex justify-center md:justify-end">
           <Link
             href="/projects"
             className="group inline-flex items-center gap-2 font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase text-white/70 transition-colors hover:text-white"
@@ -212,13 +33,12 @@ export default function SelectedWork() {
             <span>See the full workshop</span>
             <span
               aria-hidden="true"
-              className="transition-transform group-hover:translate-x-1"
-              style={{ color: VIOLET }}
+              className="transition-transform group-hover:translate-x-1 text-mauve"
             >
               →
             </span>
           </Link>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );

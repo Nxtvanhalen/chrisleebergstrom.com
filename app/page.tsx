@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import Footer from '../components/Footer';
-import Header from '../components/Header';
+import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 import IndexClient from './IndexClient';
 import { OG_IMAGES } from './og-image';
 

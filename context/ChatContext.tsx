@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import type { EveContext } from '../lib/eve-validation';
+import type { EveContext } from '@/lib/eve-validation';
 
 interface ChatContextType {
   isOpen: boolean;

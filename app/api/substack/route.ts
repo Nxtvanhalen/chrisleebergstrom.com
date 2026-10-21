@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { readTextWithLimit } from '../../../lib/eve-validation';
-import { parseSubstackFeed, type SubstackFeed } from '../../../lib/substack-parse';
+import { readTextWithLimit } from '@/lib/eve-validation';
+import { parseSubstackFeed, type SubstackFeed } from '@/lib/substack-parse';
 
 const SUBSTACK_FEED_URL = 'https://chrisleebergstrom.substack.com/feed';
 const CACHE_DURATION = 5 * 60 * 1000;
