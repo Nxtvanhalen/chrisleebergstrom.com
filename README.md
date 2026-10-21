@@ -2,7 +2,7 @@
 
 Personal site of Chris Lee Bergstrom, and EVE, an AI concierge you can talk to.
 
-[![CI](https://github.com/Nxtvanhalen/Website/actions/workflows/ci.yml/badge.svg)](https://github.com/Nxtvanhalen/Website/actions/workflows/ci.yml)
+[![CI](https://github.com/Nxtvanhalen/chrisleebergstrom.com/actions/workflows/ci.yml/badge.svg)](https://github.com/Nxtvanhalen/chrisleebergstrom.com/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 **Live:** [chrisleebergstrom.com](https://chrisleebergstrom.com)
