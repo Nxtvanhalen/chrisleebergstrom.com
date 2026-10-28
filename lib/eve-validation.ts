@@ -18,10 +18,11 @@ export const MAX_HISTORY_CHARS = 16_000;
 // this is not something our client sends.
 const MAX_RECEIVED_MESSAGES = 60;
 
-// Section names the client may report as "where the visitor is". Keep in sync
-// with every `setContext(...)` call site (ChatContext default + app/projects/ArchiveCard.tsx).
-// Anything else is dropped so visitor-controlled text never reaches the prompt.
-export const EVE_CONTEXTS = ['Home', 'Projects'] as const;
+// Page names the client may report as "where the visitor is". Keep in sync
+// with the <ChatContextSetter> in each app/*/page.tsx (ChatContext defaults to
+// Home). Anything else is dropped so visitor-controlled text never reaches the
+// prompt.
+export const EVE_CONTEXTS = ['Home', 'Projects', 'About', 'News', 'Blog', 'FAQ'] as const;
 export type EveContext = (typeof EVE_CONTEXTS)[number];
 
 export function isEveContext(value: unknown): value is EveContext {

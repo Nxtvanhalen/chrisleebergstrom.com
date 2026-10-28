@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import ChatContextSetter from '@/components/ChatContextSetter';
 import Contact from '@/components/Contact';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
@@ -303,6 +304,7 @@ export default async function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(landingSchema) }}
       />
       <Header />
+      <ChatContextSetter context="Home" />
       <IndexClient>
         <SelectedWork />
         <Method />

@@ -48,14 +48,16 @@ All four checks run in CI on every push and PR to `main`. Run them before declar
 
 ## EVE
 
-- The system prompt is `EVE_SYSTEM_PROMPT` in `app/api/chat/route.ts`. It may only describe the public projects on the site; it must never name internal, unreleased or employer work. Model, caps and timeouts: `EVE_MODEL` (DeepSeek `deepseek-flash`, thinking disabled), `MAX_OUTPUT_TOKENS`, `CONNECT_TIMEOUT_MS` and the rate limiter options in the same file.
+- The system prompt has two layers, composed per request by `composeSystemPrompt` (`lib/eve-prompt.ts`): `EVE_PERSONA` (same file: identity, rules, the "what you never discuss" list, style) and the **brief** (what Chris is building, dated). The brief is Markdown: `content/eve/brief.md` is the committed fallback, and `app/api/chat/brief.ts` fetches the live copy from the private `Nxtvanhalen/eve-brief` repo when `EVE_BRIEF_TOKEN` is set (cache in `lib/eve-brief.ts`: 10-minute TTL, stale-while-revalidate, ETag, last good copy on failure). Edit facts in the brief, not the persona; project facts in the persona would drift from the brief. Both layers are public by construction: nothing internal, unreleased, client- or employer-related goes in either.
+- Model, caps and timeouts: `EVE_MODEL` (DeepSeek `deepseek-flash`, thinking disabled), `MAX_OUTPUT_TOKENS`, `CONNECT_TIMEOUT_MS` and the rate limiter options in `app/api/chat/route.ts`; brief TTL/retry/timeout in `app/api/chat/brief.ts`.
 - The model is stateless: the client resends recent turns, and `trimHistory` (`lib/eve-validation.ts`) caps them on both sides (`MAX_HISTORY_MESSAGES`, `MAX_HISTORY_CHARS`). Request validation (`EVE_CONTEXTS` allowlist, size checks) is in the same file; the NDJSON stream protocol and the idle/total stream timeouts in `lib/eve-stream.ts`; localStorage keys in `lib/eve-storage.ts`. Change the stored shape → bump the key suffix and add the old key to `LEGACY_STORAGE_KEYS`.
+- Page context: every `app/*/page.tsx` renders `<ChatContextSetter context="…">` right after `<Header />`; a new page needs one and its name added to `EVE_CONTEXTS`.
 - Changing the model provider means updating the privacy policy (`app/privacy/page.tsx`), which names where chat messages go.
-- Tests mock `/api/chat`; never add a test that calls DeepSeek.
+- Tests mock `/api/chat`; never add a test that calls DeepSeek or GitHub (the integration suite unsets `EVE_BRIEF_TOKEN`).
 
 ## Secrets, privacy, assets
 
-- Never commit `.env*` files or paste keys into code or docs; `.env.example` is the only tracked env file and holds no values. Secrets are `DEEPSEEK_API_KEY` and `SENTRY_AUTH_TOKEN`; the Sentry DSN, GA id and Plausible URL are public on purpose.
+- Never commit `.env*` files or paste keys into code or docs; `.env.example` is the only tracked env file and holds no values. Secrets are `DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN` and `EVE_BRIEF_TOKEN`; the Sentry DSN, GA id and Plausible URL are public on purpose.
 - Keep Sentry's `dataCollection` in `sentry.shared.ts` restrictive: no request bodies, cookies or IPs. Visitor chat messages must never be logged or reported.
 - Everything in `public/` must be referenced from code, or removed. Strip EXIF metadata (GPS especially) from any image before adding it; no `.heic`/`.heif` originals.
 - Don't touch `public/sw.js` except to delete it after 2027-03.

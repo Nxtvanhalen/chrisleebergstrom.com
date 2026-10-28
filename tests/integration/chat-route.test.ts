@@ -1,6 +1,7 @@
 // Calls the EVE chat route handler directly with hand-built Requests. Nothing
-// here reaches DeepSeek: globalThis.fetch is replaced for the upstream cases and
-// Sentry is mocked so a misconfiguration assertion can see the capture.
+// here reaches DeepSeek or GitHub: globalThis.fetch is replaced for the upstream
+// cases, EVE_BRIEF_TOKEN is unset so the brief comes from the committed file,
+// and Sentry is mocked so a misconfiguration assertion can see the capture.
 
 import { afterEach, beforeAll, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
 import { MAX_BODY_BYTES, MAX_HISTORY_MESSAGES } from '../../lib/eve-validation';
@@ -13,6 +14,9 @@ type ChatPost = typeof import('../../app/api/chat/route').POST;
 let POST: ChatPost;
 
 beforeAll(async () => {
+  // A developer's .env.local may carry a real token (Bun loads it); without
+  // one the brief module never fetches, which keeps the fetch stubs honest.
+  delete process.env.EVE_BRIEF_TOKEN;
   ({ POST } = await import('../../app/api/chat/route'));
 });
 
@@ -342,9 +346,20 @@ describe('POST /api/chat — upstream handling', () => {
       stream: true,
     });
     expect(sent.messages[0].role).toBe('system');
-    expect(sent.messages[0].content).toContain('You are EVE');
-    expect(sent.messages[0].content).toContain('[CURRENT CONTEXT]');
-    expect(sent.messages[0].content).toContain('"Projects"');
+    const system: string = sent.messages[0].content;
+    expect(system).toContain('You are EVE');
+    // Persona, then today's date, then the brief (the committed copy here),
+    // then the page context; each exactly once.
+    expect(system).toMatch(
+      /\[TODAY\]\nToday is [A-Z][a-z]+, [A-Z][a-z]+ \d{1,2}, \d{4} \(Pacific time\)/,
+    );
+    expect(system.indexOf('[CURRENT BRIEF]')).toBeGreaterThan(system.indexOf('[TODAY]'));
+    expect(system).toContain('Last updated:');
+    expect(system).toContain('Beacons');
+    expect(system).toContain('[END BRIEF]');
+    expect(system.indexOf('[CURRENT CONTEXT]')).toBeGreaterThan(system.indexOf('[END BRIEF]'));
+    expect(system).toContain('"Projects"');
+    expect(system.match(/\[CURRENT BRIEF\]/g)).toHaveLength(1);
     expect(sent.messages.slice(1)).toEqual([
       { role: 'user', content: 'hi' },
       { role: 'assistant', content: 'Hello!' },

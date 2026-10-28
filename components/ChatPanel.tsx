@@ -18,9 +18,19 @@ import EveAvatar from './EveAvatar';
 const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
   content:
-    "Welcome — I'm EVE, Chris's portfolio assistant. Ask me about the work, the road, or how to reach him.",
+    "Welcome — I'm EVE, Chris's portfolio assistant. Ask me what Chris is building, about the road, or how to reach him.",
   local: true,
 };
+
+// Shown under the welcome line until the first message is sent, to steer a
+// visitor who doesn't know what to ask toward what's current. The middle one
+// names the current lead project on purpose; change it when the lead changes.
+// The brief decides what "new" means, so the other two stay generic.
+const SUGGESTED_PROMPTS = [
+  "What's new?",
+  'Tell me about Beacons',
+  'How do I reach Chris?',
+] as const;
 
 const GENERIC_ERROR_TEXT =
   "I'm experiencing some technical difficulties. Please try again in a moment, or feel free to email me directly!";
@@ -176,9 +186,9 @@ export default function ChatPanel() {
     inputRef.current?.focus({ preventScroll: true });
   };
 
-  const sendMessage = async (e: FormEvent) => {
-    e.preventDefault();
-    const content = input.trim();
+  // Sends one visitor message: from the form, or from a suggested-question chip.
+  const submit = async (rawContent: string) => {
+    const content = rawContent.trim();
     if (!content || isTyping || isStreaming) return;
 
     const userMsg: ChatMessage = { role: 'user', content };
@@ -453,6 +463,22 @@ export default function ChatPanel() {
         {announcement}
       </div>
 
+      {!hasConversation && (
+        <fieldset className="animate-message-in flex flex-wrap gap-2 px-4 pb-3">
+          <legend className="sr-only">Suggested questions</legend>
+          {SUGGESTED_PROMPTS.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => void submit(prompt)}
+              disabled={busy}
+              className="rounded-full border border-mauve/30 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-white/75 transition-colors hover:border-mauve/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {prompt}
+            </button>
+          ))}
+        </fieldset>
+      )}
       {hasConversation && (
         <div className="flex justify-end px-3 py-1 border-t border-white/10">
           <button
@@ -466,7 +492,13 @@ export default function ChatPanel() {
         </div>
       )}
 
-      <form onSubmit={sendMessage} className="flex border-t border-mauve/30 bg-black/30">
+      <form
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          void submit(input);
+        }}
+        className="flex border-t border-mauve/30 bg-black/30"
+      >
         <input
           ref={inputRef}
           className="flex-1 p-4 bg-transparent text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-mauve/50 rounded-none"

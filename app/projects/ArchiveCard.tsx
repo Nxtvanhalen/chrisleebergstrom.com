@@ -12,7 +12,7 @@ type ArchiveCardProps = {
   kind: string;
   blurb: string;
   href?: string;
-  /** Opens the EVE chat with the Projects context instead of linking out. */
+  /** Opens the EVE chat instead of linking out (the page's ChatContextSetter reports Projects). */
   eve?: boolean;
   delay?: number;
 };
@@ -30,7 +30,7 @@ export default function ArchiveCard({
   eve = false,
   delay = 0,
 }: ArchiveCardProps) {
-  const { openChat, setContext } = useChat();
+  const { openChat } = useChat();
 
   const inner = (
     <>
@@ -79,10 +79,7 @@ export default function ArchiveCard({
     return (
       <motion.button
         type="button"
-        onClick={() => {
-          setContext('Projects');
-          openChat();
-        }}
+        onClick={openChat}
         className={`${CARD} w-full cursor-pointer text-left`}
         {...motionProps}
       >

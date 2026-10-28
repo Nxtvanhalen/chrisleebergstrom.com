@@ -17,6 +17,7 @@ The production site for Chris Lee Bergstrom, an AI developer with twenty years i
 
 - **Nonce CSP on every response.** `proxy.ts` generates a nonce per request and sets `script-src 'self' 'nonce-…' 'strict-dynamic'` on everything except Next's build assets (`/_next/static`, `/_next/image`): pages, API responses, 403s and allowlisted crawlers alike. Every route renders dynamically so framework scripts carry the nonce; violations are reported to Sentry through `report-uri` and `report-to`.
 - **EVE streams, with guardrails.** `/api/chat` calls DeepSeek's OpenAI-compatible Chat Completions API directly with `fetch` (no SDK), relays the SSE stream as NDJSON, and refuses cross-site, non-JSON, oversized (64 KB) and malformed requests. The model is stateless, so the client resends recent turns and both sides trim them to 16 messages / 16,000 characters, which bounds the cost of every call. Rate limits: 20 requests/minute per IP and 300/hour per instance; replies are capped at 800 output tokens; a stalled upstream times out; the upstream call is cancelled when the visitor leaves.
+- **EVE stays current without a deploy.** Her prompt is two layers: a persona in code (`lib/eve-prompt.ts`: who she is, what she never discusses, how she talks) and a dated Markdown brief of what Chris is building. The brief is fetched at runtime from a private GitHub repo, cached for ten minutes with ETags, and falls back to the committed `content/eve/brief.md` (or the last good copy) if GitHub is unreachable or the token has expired, with a Sentry warning so it isn't silent. She also gets today's date, so "recent" means something to a model with no clock and no internet.
 - **Accessibility checked in CI.** Playwright runs axe (WCAG 2.1 A/AA rules) on every route in the sitemap against a production build and fails on serious or critical violations. The menu drawer, FAQ accordion, chat dialog and skip link have keyboard tests.
 - **Sentry with PII collection off.** No request bodies, cookies or IPs leave the server (`sentry.shared.ts`); browser events tunnel through `/monitoring` on the site's own origin.
 - **Privacy-first analytics.** Google Analytics loads only after consent (vanilla-cookieconsent); withdrawing consent erases its cookies. Plausible runs cookieless.
@@ -152,7 +153,7 @@ At the time of writing that is 124 unit and integration tests and 34 e2e tests. 
 
 Request filtering and the CSP live in `proxy.ts` and `lib/proxy-security.ts`; the chat endpoint's validation in `lib/eve-validation.ts`. Other security headers (HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) are set in `next.config.js`.
 
-Some identifiers are in the source on purpose and are not secrets: the Sentry DSN and the CSP report endpoint (write-only ingest addresses), the Google Analytics measurement ID, the Plausible script URL and the Search Console verification file. Real secrets (`DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN`) exist only in the environment.
+Some identifiers are in the source on purpose and are not secrets: the Sentry DSN and the CSP report endpoint (write-only ingest addresses), the Google Analytics measurement ID, the Plausible script URL and the Search Console verification file. Real secrets (`DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN`, `EVE_BRIEF_TOKEN`) exist only in the environment.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
@@ -162,7 +163,7 @@ The site runs as a Render web service.
 
 - Build command: `bun install && bun run build`. Start command: `bun run start`. (Confirm in the Render dashboard; the Bun version must be 1.4.3.)
 - **Deploys are manual.** Auto-deploy is off, so pushing to `main` does not deploy; trigger the deploy from the Render dashboard or the Render CLI after CI is green.
-- Environment: `DEEPSEEK_API_KEY` (required); `SENTRY_AUTH_TOKEN`, `NEXT_PUBLIC_SENTRY_ENV`, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES` as needed.
+- Environment: `DEEPSEEK_API_KEY` (required); `EVE_BRIEF_TOKEN` (read-only token for the private brief repo; without it EVE uses the committed brief); `SENTRY_AUTH_TOKEN`, `NEXT_PUBLIC_SENTRY_ENV`, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES` as needed.
 - Safe CSP rollout: set `CSP_REPORT_ONLY=true`, deploy, watch the CSP issues in Sentry, then remove the variable to enforce.
 
 ## Related work

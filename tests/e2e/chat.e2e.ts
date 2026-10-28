@@ -90,6 +90,93 @@ test.describe('EVE chat panel', () => {
     await expect(dialog.getByRole('button', { name: 'New conversation' })).toBeVisible();
   });
 
+  test('a suggested question sends itself as the first message, then the chips go', async ({
+    page,
+  }) => {
+    const requests = await mockChat(page, [['Beacons is live at beaconsio.com.']]);
+    await page.goto('/');
+    await page.getByRole('button', { name: OPEN_LABEL }).click();
+    const dialog = page.getByRole('dialog', { name: 'EVE' });
+    const chips = dialog.getByRole('group', { name: 'Suggested questions' });
+    await expect(chips).toBeVisible();
+
+    await chips.getByRole('button', { name: 'Tell me about Beacons' }).click();
+    await expect(dialog.getByText('Tell me about Beacons')).toBeVisible();
+    await expect(
+      dialog.getByRole('paragraph').filter({ hasText: 'Beacons is live at beaconsio.com.' }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(chips).toBeHidden();
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toEqual({
+      messages: [{ role: 'user', content: 'Tell me about Beacons' }],
+      context: 'Home',
+    });
+    // Resetting brings the chips back.
+    await dialog.getByRole('button', { name: 'New conversation' }).click();
+    await expect(chips).toBeVisible();
+  });
+
+  test('each page reports its own context to EVE', async ({ page }) => {
+    const pages = [
+      ['/about', 'About'],
+      ['/projects', 'Projects'],
+    ] as const;
+    const requests = await mockChat(
+      page,
+      pages.map(([, context]) => [`Hello from ${context}.`]),
+    );
+    for (const [index, [path, context]] of pages.entries()) {
+      await page.goto(path);
+      await page.getByRole('button', { name: OPEN_LABEL }).click();
+      const dialog = page.getByRole('dialog', { name: 'EVE' });
+      await dialog.getByRole('textbox', { name: 'Message EVE' }).fill(`hi from ${context}`);
+      await page.keyboard.press('Enter');
+      // The transcript persists across navigations, so wait for this page's
+      // own request and reply rather than for any matching paragraph.
+      await expect.poll(() => requests.length).toBe(index + 1);
+      expect(requests[index].context).toBe(context);
+      await expect(
+        dialog.getByRole('paragraph').filter({ hasText: `Hello from ${context}.` }),
+      ).toBeVisible();
+      await page.keyboard.press('Escape');
+    }
+  });
+
+  test('client-side navigation updates the context and returns to Home', async ({ page }) => {
+    const requests = await mockChat(page, [['On FAQ.'], ['On Home.']]);
+    await page.goto('/');
+    // To /faq through the site menu: a client-side navigation, so the FAQ
+    // page's setter runs without a reload.
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    await page
+      .getByRole('dialog', { name: 'Site menu' })
+      .getByRole('link', { name: 'FAQ' })
+      .click();
+    await expect(page).toHaveURL(/\/faq$/);
+    await page.getByRole('button', { name: OPEN_LABEL }).click();
+    const dialog = page.getByRole('dialog', { name: 'EVE' });
+    await dialog.getByRole('textbox', { name: 'Message EVE' }).fill('hi');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => requests.length).toBe(1);
+    expect(requests[0].context).toBe('FAQ');
+    await expect(dialog.getByRole('paragraph').filter({ hasText: 'On FAQ.' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // Back home through the header link: the FAQ setter's cleanup must not
+    // leave "FAQ" behind.
+    await page.locator('header a[href="/"]').first().click();
+    await expect(page).toHaveURL(/\/$/);
+    await page.getByRole('button', { name: OPEN_LABEL }).click();
+    await page
+      .getByRole('dialog', { name: 'EVE' })
+      .getByRole('textbox', { name: 'Message EVE' })
+      .fill('home again');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => requests.length).toBe(2);
+    expect(requests[1].context).toBe('Home');
+  });
+
   test('the next message carries the conversation so far', async ({ page }) => {
     const requests = await mockChat(page, [['Hi! I am EVE.'], ['He builds agentic software.']]);
     await page.goto('/');

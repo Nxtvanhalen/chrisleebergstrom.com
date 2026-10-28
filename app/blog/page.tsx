@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { OG_IMAGES } from '@/app/og-image';
+import ChatContextSetter from '@/components/ChatContextSetter';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import BlogClient from './BlogClient';
@@ -69,6 +70,7 @@ export default async function BlogPage() {
   return (
     <>
       <Header />
+      <ChatContextSetter context="Blog" />
       <script
         type="application/ld+json"
         nonce={nonce}

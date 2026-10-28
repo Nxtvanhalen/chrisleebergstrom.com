@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { OG_IMAGES } from '@/app/og-image';
+import ChatContextSetter from '@/components/ChatContextSetter';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import PageCta from '@/components/PageCta';
@@ -239,6 +240,7 @@ export default async function ProjectsPage() {
   return (
     <>
       <Header />
+      <ChatContextSetter context="Projects" />
       <script
         type="application/ld+json"
         nonce={nonce}
