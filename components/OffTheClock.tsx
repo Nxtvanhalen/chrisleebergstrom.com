@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import Image from 'next/image';
+import { useEffect, useRef } from 'react';
 import { useChat } from '@/context/ChatContext';
 import { SUBSTACK_URL } from '@/lib/site';
 import { mauve } from '@/lib/theme';
@@ -14,9 +15,45 @@ import SectionHeading from './SectionHeading';
 const CARD =
   'group relative block overflow-hidden rounded-xs border bg-black/40 backdrop-blur-md transition-[border-color,box-shadow] duration-300 border-mauve/22 hover:border-mauve/70 hover:shadow-[0_0_28px_rgba(147,112,219,0.22)]';
 const HOVER_WASH = { background: `linear-gradient(180deg, ${mauve(0)} 60%, ${mauve(0.18)} 100%)` };
+// Radial mask on EVE's picture: fades to transparent at the borders so the
+// blurred backdrop shows through as a soft halo. Inline because CSS `mask` has
+// no Tailwind utility for an arbitrary gradient.
+const EVE_MASK = {
+  mask: 'radial-gradient(ellipse 70% 80% at center, black 30%, transparent 95%)',
+  WebkitMask: 'radial-gradient(ellipse 70% 80% at center, black 30%, transparent 95%)',
+};
 
 export default function OffTheClock() {
   const { toggleChat } = useChat();
+  const eveVideoRef = useRef<HTMLVideoElement>(null);
+
+  // EVE's clip loops while the card is on screen and pauses when it scrolls
+  // away, so it costs nothing while the visitor is elsewhere on the page.
+  // Nothing plays under prefers-reduced-motion: the clip is hidden by CSS and
+  // the still shows; the setting is re-read if it changes.
+  useEffect(() => {
+    const video = eveVideoRef.current;
+    if (!video || typeof IntersectionObserver === 'undefined') return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let onScreen = false;
+    const apply = () => {
+      if (onScreen && !reduceMotion.matches) void video.play().catch(() => {});
+      else video.pause();
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onScreen = !!entry?.isIntersecting;
+        apply();
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(video);
+    reduceMotion.addEventListener('change', apply);
+    return () => {
+      observer.disconnect();
+      reduceMotion.removeEventListener('change', apply);
+    };
+  }, []);
 
   return (
     <section
@@ -97,7 +134,7 @@ export default function OffTheClock() {
               {/* Blurred backdrop copy — fills the frame behind the sharp version.
                   scale(1.08) prevents the blur from showing its own edge as a soft ring. */}
               <Image
-                src="/images/EVEP.png"
+                src="/images/eve-poster.jpg"
                 alt=""
                 aria-hidden="true"
                 fill
@@ -105,19 +142,32 @@ export default function OffTheClock() {
                 sizes="(min-width: 768px) 50vw, 100vw"
               />
 
-              {/* Sharp foreground — the radial mask fades to transparent at the borders,
-                  revealing the blurred copy beneath and giving the soft-edge halo effect. */}
+              {/* Sharp foreground: EVE's clip (muted, looping; the loop is crossfaded
+                  so it never jumps). The poster is its first frame so playback starts
+                  seamlessly. */}
+              <video
+                ref={eveVideoRef}
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                poster="/images/eve-poster-start.jpg"
+                aria-hidden="true"
+                tabIndex={-1}
+                className="absolute inset-0 h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:hidden"
+                style={EVE_MASK}
+              >
+                <source src="/videos/eve-intro.mp4" type="video/mp4" />
+              </video>
+
+              {/* The still (the clip's final frame) for prefers-reduced-motion. */}
               <Image
-                src="/images/EVEP.png"
+                src="/images/eve-poster.jpg"
                 alt="EVE — the site's AI concierge"
                 fill
-                className="object-contain transition-transform duration-700 group-hover:scale-[1.03]"
+                className="hidden object-contain motion-reduce:block"
                 sizes="(min-width: 768px) 50vw, 100vw"
-                style={{
-                  mask: 'radial-gradient(ellipse 70% 80% at center, black 30%, transparent 95%)',
-                  WebkitMask:
-                    'radial-gradient(ellipse 70% 80% at center, black 30%, transparent 95%)',
-                }}
+                style={EVE_MASK}
               />
               <div
                 aria-hidden="true"
