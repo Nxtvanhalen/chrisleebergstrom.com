@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import {
   BRIEF_TRUNCATED_NOTE,
+  briefAgeDays,
   composeSystemPrompt,
+  describeBriefAge,
   EVE_PERSONA,
   formatToday,
   MAX_BRIEF_CHARS,
@@ -40,6 +42,36 @@ describe('sanitizeBrief', () => {
   });
 });
 
+describe('briefAgeDays', () => {
+  const noon = new Date('2026-10-28T19:00:00Z'); // noon in Portland
+  test('counts whole days from the Last updated line to today in Pacific time', () => {
+    expect(briefAgeDays('# B\n\nLast updated: 2026-10-28\n', noon)).toBe(0);
+    expect(briefAgeDays('Last updated: 2026-10-27', noon)).toBe(1);
+    expect(briefAgeDays('Last updated: 2026-09-28', noon)).toBe(30);
+    // 03:30 UTC on the 28th is still the 27th in Portland.
+    expect(briefAgeDays('Last updated: 2026-10-27', LATE_EVENING_PACIFIC)).toBe(0);
+  });
+
+  test('a future date counts as today; no date is null', () => {
+    expect(briefAgeDays('Last updated: 2026-11-05', noon)).toBe(0);
+    expect(briefAgeDays('# no date here', noon)).toBeNull();
+    expect(briefAgeDays('Last updated: soon', noon)).toBeNull();
+  });
+
+  test('describeBriefAge reads naturally', () => {
+    expect(describeBriefAge('Last updated: 2026-10-28', noon)).toBe(
+      ' The brief below was updated today.',
+    );
+    expect(describeBriefAge('Last updated: 2026-10-27', noon)).toBe(
+      ' The brief below was updated yesterday.',
+    );
+    expect(describeBriefAge('Last updated: 2026-10-01', noon)).toBe(
+      ' The brief below was updated 27 days ago.',
+    );
+    expect(describeBriefAge('undated', noon)).toBe('');
+  });
+});
+
 describe('composeSystemPrompt', () => {
   const today = new Date('2026-10-28T17:00:00Z');
 
@@ -55,9 +87,11 @@ describe('composeSystemPrompt', () => {
       return index;
     };
     expect(prompt.startsWith('You are EVE')).toBe(true);
-    expect(at('[TODAY]\nToday is Wednesday, October 28, 2026 (Pacific time).')).toBeGreaterThan(
-      at('You are EVE'),
-    );
+    expect(
+      at(
+        '[TODAY]\nToday is Wednesday, October 28, 2026 (Pacific time). The brief below was updated today.',
+      ),
+    ).toBeGreaterThan(at('You are EVE'));
     expect(at('[CURRENT BRIEF]\n# EVE Brief')).toBeGreaterThan(at('[TODAY]'));
     expect(at('[END BRIEF]')).toBeGreaterThan(at('Beacons is the main build.'));
     expect(at('[CURRENT CONTEXT]\nThe visitor is on the "Projects" page')).toBeGreaterThan(
@@ -82,6 +116,9 @@ describe('composeSystemPrompt', () => {
   test('the persona carries the rules the brief depends on', () => {
     expect(EVE_PERSONA).toContain('NO GUESSING');
     expect(EVE_PERSONA).toContain('WHAT YOU NEVER DISCUSS');
+    // Time is handled as freshness, not recited as a disclaimer.
+    expect(EVE_PERSONA).toContain('TIME AND FRESHNESS');
+    expect(EVE_PERSONA).toContain("Don't volunteer caveats");
     expect(EVE_PERSONA).toContain('chrisleebergstrom@gmail.com');
     expect(EVE_PERSONA).toContain('Never claim a Grammy nomination');
     // Project facts belong in the brief, not here, so the two can't drift.

@@ -37,9 +37,17 @@ You are the digital concierge for Chris Lee Bergstrom's portfolio. Think sharp-w
 
 ⸻
 
-⏱ TIME
+⏱ TIME AND FRESHNESS
 
-Today's date is given at the end of these instructions. The brief carries a "Last updated" date; everything in it was true as of that date. Its timeline runs newest first, so "recent" means the top of that list. If the brief is more than a couple of months old, say "as of my last briefing" rather than "right now". Never make up a date.
+You know today's date, and how long ago your brief was updated; both are given at the end of these instructions. You don't know the time of day, and you can't look anything up, so everything about the work comes from the brief. Its timeline runs newest first: "recent" means the top of that list.
+
+Handle this the way a well-briefed person would, not like a disclaimer:
+
+* Don't volunteer caveats about clocks, cut-offs, web access, or briefings. If the brief was updated within the last couple of months, the work in it is simply current: "Right now Chris is mostly on…" and name whatever the brief leads with. "What's new?" gets the news, not a warning label.
+* Only mention freshness when it matters: the brief is older than a couple of months, or the visitor asks about something time-sensitive (a launch date, "is that still live?", "what happened this week?"). Then one natural clause does it: "Last I was briefed, in late October, that was the main build" or "That was live as of my last update; for anything since, Chris is the one to ask."
+* Asked the time? "I know the date, not the time. It's Tuesday here in Portland." Asked the date? Just say it.
+* Never say "my instructions", "my system prompt", "my training", "my knowledge cutoff", "my briefing", or "I have no clock". You're a concierge, not a chatbot explaining its wiring.
+* Never make up a date, and never say something is happening today unless the brief says so.
 
 ⸻
 
@@ -149,7 +157,7 @@ COMMON INTERACTIONS
 * **"Can you check the weather?"** → "Not my department — no web access, just this site. But I can tell you about the work, the road, or how to reach Chris."
 * **"Who are you?"** → "EVE. The digital concierge for Chris's portfolio. I know what's on this site, what he's building, and how to reach him."
 * **"What does Chris do?"** → "He's an AI-native engineer with 20 years in live entertainment. Builds agentic software for venues, tours, and live events — with AI agents as the build team. Front of house first; software second."
-* **"What's new?" / "What's he working on?"** → Lead with the newest entries in the brief's timeline and whatever its "If asked" section says to lead with, then offer the link. Three things at most.
+* **"What's new?" / "What's he working on?"** → Lead with the newest entries in the brief's timeline and whatever its "If asked" section says to lead with, then offer the link. Three things at most, and no caveat about clocks or briefings: if the brief is fresh, this is the news.
 * **"Can I see code?"** → The GitHub profile and whichever public repos the brief names.
 * **"Can I work with him?"** → "Yes. Easiest is email: chrisleebergstrom@gmail.com — drop him a line and tell him what you're building."
 * **Any project question** → Use the brief's wording, then offer the link.
@@ -187,6 +195,44 @@ export function formatToday(date: Date, timeZone: string = EVE_TIME_ZONE): strin
   }).format(date);
 }
 
+const LAST_UPDATED_RE = /^Last updated:\s*(\d{4})-(\d{2})-(\d{2})\s*$/m;
+
+/**
+ * Whole days between the brief's "Last updated: YYYY-MM-DD" line and today's
+ * calendar date in Chris's time zone; null when the brief carries no such
+ * line. A brief dated in the future (clock skew, a typo) counts as today.
+ */
+export function briefAgeDays(
+  brief: string,
+  today: Date,
+  timeZone: string = EVE_TIME_ZONE,
+): number | null {
+  const match = LAST_UPDATED_RE.exec(brief);
+  if (!match) return null;
+  const updated = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  // en-CA renders numeric dates as YYYY-MM-DD.
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(today)
+    .split('-')
+    .map(Number);
+  const days = Math.round((Date.UTC(year, month - 1, day) - updated) / 86_400_000);
+  return days < 0 ? 0 : days;
+}
+
+/** " The brief below was updated today." and the like; empty when undated. */
+export function describeBriefAge(brief: string, today: Date): string {
+  const age = briefAgeDays(brief, today);
+  if (age === null) return '';
+  if (age === 0) return ' The brief below was updated today.';
+  if (age === 1) return ' The brief below was updated yesterday.';
+  return ` The brief below was updated ${age} days ago.`;
+}
+
 export type ComposePromptOptions = {
   /** The current brief, Markdown. Sanitised here; callers pass it raw. */
   brief: string;
@@ -209,7 +255,7 @@ export function composeSystemPrompt({
 }: ComposePromptOptions): string {
   const parts = [
     persona.trim(),
-    `[TODAY]\nToday is ${formatToday(today)} (Pacific time).`,
+    `[TODAY]\nToday is ${formatToday(today)} (Pacific time).${describeBriefAge(brief, today)}`,
     `[CURRENT BRIEF]\n${sanitizeBrief(brief)}\n[END BRIEF]`,
   ];
   if (context) {
