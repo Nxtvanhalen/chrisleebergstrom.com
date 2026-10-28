@@ -221,7 +221,7 @@ export function briefAgeDays(
     .split('-')
     .map(Number);
   const days = Math.round((Date.UTC(year, month - 1, day) - updated) / 86_400_000);
-  return days < 0 ? 0 : days;
+  return Math.max(0, days);
 }
 
 /** " The brief below was updated today." and the like; empty when undated. */
