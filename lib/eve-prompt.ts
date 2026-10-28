@@ -202,6 +202,19 @@ const LAST_UPDATED_RE = /^Last updated:\s*(\d{4})-(\d{2})-(\d{2})\s*$/m;
  * calendar date in Chris's time zone; null when the brief carries no such
  * line. A brief dated in the future (clock skew, a typo) counts as today.
  */
+/**
+ * Midnight UTC for a calendar date, or null when the parts do not name a real
+ * day (month 13, February 30, February 29 off a leap year). Date.UTC would
+ * silently roll those forward, which could make a malformed brief look fresh.
+ */
+function utcCalendarDate(year: number, month: number, day: number): number | null {
+  const ms = Date.UTC(year, month - 1, day);
+  const d = new Date(ms);
+  const real =
+    d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
+  return real ? ms : null;
+}
+
 export function briefAgeDays(
   brief: string,
   today: Date,
@@ -209,7 +222,8 @@ export function briefAgeDays(
 ): number | null {
   const match = LAST_UPDATED_RE.exec(brief);
   if (!match) return null;
-  const updated = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const updated = utcCalendarDate(Number(match[1]), Number(match[2]), Number(match[3]));
+  if (updated === null) return null;
   // en-CA renders numeric dates as YYYY-MM-DD.
   const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
     timeZone,

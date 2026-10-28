@@ -58,6 +58,17 @@ describe('briefAgeDays', () => {
     expect(briefAgeDays('Last updated: soon', noon)).toBeNull();
   });
 
+  test('rejects dates that do not exist instead of rolling them forward', () => {
+    const noon = new Date('2026-10-28T19:00:00Z');
+    expect(briefAgeDays('Last updated: 2026-13-01', noon)).toBeNull();
+    expect(briefAgeDays('Last updated: 2026-02-30', noon)).toBeNull();
+    expect(briefAgeDays('Last updated: 2025-02-29', noon)).toBeNull();
+    expect(briefAgeDays('Last updated: 2026-04-31', noon)).toBeNull();
+    expect(briefAgeDays('Last updated: 2026-10-00', noon)).toBeNull();
+    // Real leap day still parses.
+    expect(briefAgeDays('Last updated: 2024-02-29', noon)).toBeGreaterThan(900);
+  });
+
   test('describeBriefAge reads naturally', () => {
     expect(describeBriefAge('Last updated: 2026-10-28', noon)).toBe(
       ' The brief below was updated today.',
