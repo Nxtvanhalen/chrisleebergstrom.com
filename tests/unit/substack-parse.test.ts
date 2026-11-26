@@ -110,6 +110,14 @@ describe('parseSubstackFeed', () => {
     ]);
   });
 
+  test('a feed with two channels is rejected instead of read as empty', () => {
+    expect(() =>
+      parseSubstackFeed(
+        '<rss version="2.0"><channel><title>A</title></channel><channel><title>B</title></channel></rss>',
+      ),
+    ).toThrow('Invalid RSS feed structure');
+  });
+
   test('a channel with no items yields defaults and no posts', () => {
     const feed = parseSubstackFeed(
       '<rss version="2.0"><channel><link>https://x.test</link></channel></rss>',

@@ -16,7 +16,7 @@ Everything below is maintained by hand; the block above is managed by `next dev`
 
 chrisleebergstrom.com: a Next.js 16 App Router personal site with a per-request nonce CSP and EVE, a streaming chat concierge on DeepSeek. Human-readable docs: `README.md`, `docs/DEVELOPMENT.md` (conventions, EVE internals, CSP rules), `docs/CSP-AND-NEXTJS-ROADMAP.md` (why the CSP is built this way and the gotchas).
 
-## Commands (Bun 1.4.3, see `.bun-version`)
+## Commands (Bun 1.4.5, see `.bun-version`)
 
 ```bash
 bun run check       # biome ci — lint + format, what CI runs (bun run lint:fix to fix)
@@ -26,7 +26,7 @@ bun run test:e2e    # Playwright + axe against a production build (PLAYWRIGHT_SK
 bun run build       # must pass before a PR
 ```
 
-All four checks run in CI on every push and PR to `main`. Run them before declaring work done.
+All five run in CI on every push and PR to `main`. Run them before declaring work done.
 
 ## Conventions
 

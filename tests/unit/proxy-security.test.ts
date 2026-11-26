@@ -162,6 +162,16 @@ describe('isBlockedPath', () => {
     expect(isBlockedPath('/.env.production')).toBe(true);
   });
 
+  test('case and percent-encoding do not get a scanner path through', () => {
+    expect(isBlockedPath('/WP-Admin/setup.php')).toBe(true);
+    expect(isBlockedPath('/.ENV')).toBe(true);
+    expect(isBlockedPath('/%2Eenv')).toBe(true);
+    expect(isBlockedPath('/wp%2Dlogin.php')).toBe(true);
+    // A malformed escape is checked as sent instead of throwing.
+    expect(isBlockedPath('/%E0%A4%A/.git/config')).toBe(true);
+    expect(isBlockedPath('/%E0%A4%A')).toBe(false);
+  });
+
   test('leaves real routes alone', () => {
     for (const path of ['/', '/about', '/projects', '/api/chat', '/blog', '/environment']) {
       expect(isBlockedPath(path)).toBe(false);

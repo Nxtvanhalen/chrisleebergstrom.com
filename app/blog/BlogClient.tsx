@@ -7,20 +7,12 @@ import PageCta from '@/components/PageCta';
 import PageHero from '@/components/PageHero';
 import Reveal from '@/components/Reveal';
 import { mailto, SUBSTACK_URL } from '@/lib/site';
+import type { SubstackPost } from '@/lib/substack-parse';
 
-interface SubstackPost {
-  title: string;
-  link: string;
-  pubDate: string;
-  contentSnippet: string;
-  author: string;
-}
-
+// What /api/substack answers with: the parsed feed on success, an error otherwise.
 interface SubstackFeed {
   success: boolean;
   posts: SubstackPost[];
-  feedTitle?: string;
-  feedDescription?: string;
   error?: string;
 }
 
@@ -70,9 +62,9 @@ function PostCard({ code, post, delay = 0 }: PostCardProps) {
         </time>
       </div>
 
-      <h3 className="font-heading text-xl md:text-2xl uppercase tracking-tight leading-snug text-white">
+      <h2 className="font-heading text-xl md:text-2xl uppercase tracking-tight leading-snug text-white">
         {post.title}
-      </h3>
+      </h2>
 
       {post.contentSnippet && (
         <p className="font-body text-base mt-4 leading-relaxed text-cream/78">

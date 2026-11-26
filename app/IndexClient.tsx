@@ -316,15 +316,18 @@ export default function IndexClient({ children }: { children: ReactNode }) {
           <motion.div
             className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.55 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.4 }}
             aria-hidden="true"
           >
-            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/60">
+            {/* The dimming lives in the colours, not a wrapper opacity: 50% white on black is
+                5.3:1, where the old 60% white under a 0.55 wrapper settled at 2.8:1 (WCAG AA
+                needs 4.5:1). The line keeps its old brightness (0.4 × 0.55 ≈ 0.2). */}
+            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/50">
               Scroll
             </span>
             <motion.span
-              className="block w-px h-8 bg-white/40 origin-top"
+              className="block w-px h-8 bg-white/20 origin-top"
               animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.3, 0.9, 0.3] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
             />

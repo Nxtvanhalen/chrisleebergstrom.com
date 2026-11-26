@@ -96,7 +96,7 @@ The CSP design, the Next.js migration it required and the gotchas hit along the 
 
 ## Running locally
 
-Requires Bun 1.4.3 (`.bun-version`).
+Requires Bun 1.4.5 (`.bun-version`).
 
 ```bash
 bun install
@@ -133,6 +133,8 @@ From `.env.example`; git ignores every other `.env*` file.
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `DEEPSEEK_API_KEY` | Yes (for EVE) | Server-side key used by `app/api/chat/route.ts`. The build never calls DeepSeek; CI uses a placeholder. |
+| `EVE_BRIEF_TOKEN` | No | Read-only GitHub token for EVE's live brief (private repo). Unset, EVE uses the bundled `content/eve/brief.md`. |
+| `EVE_BRIEF_REPO`, `EVE_BRIEF_PATH`, `EVE_BRIEF_REF` | No | Override where the brief is read from (defaults in `app/api/chat/brief.ts`). |
 | `SENTRY_AUTH_TOKEN` | No | Source-map upload during `next build`. Unset, the build still succeeds. |
 | `NEXT_PUBLIC_SENTRY_ENV` | No | Environment tag on Sentry events (defaults to `production`). |
 | `CSP_REPORT_ONLY` | No | `true` sends the policy as `Content-Security-Policy-Report-Only`; anything else enforces. |
@@ -147,7 +149,7 @@ From `.env.example`; git ignores every other `.env*` file.
 - **Integration** (`tests/integration`, `bun test`): `proxy.ts` end to end for each environment variant (default, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES`, `CSP_REPORT_ONLY`), its matcher via Next's `unstable_doesMiddlewareMatch`, and `POST /api/chat` with a mocked DeepSeek, covering every refusal path (403, 415, 413, 400, 429), upstream failures and timeouts, and a healthy relay.
 - **End-to-end** (`tests/e2e`, Playwright, Chromium, against `next build && next start`): for every route in `app/sitemap.ts`: a 200, one `h1`, a `main` landmark, the enforced CSP header, no CSP violations or hydration errors in the console, and no serious or critical axe violations. Plus the EVE panel with `/api/chat` mocked, the menu drawer, the skip link, the FAQ accordion and the 404 page.
 
-At the time of writing that is 124 unit and integration tests and 34 e2e tests. CI (`.github/workflows/ci.yml`) runs `check` → `typecheck` → `test` first, then `build` and the e2e job in parallel; the Playwright report is uploaded as an artifact when e2e fails.
+At the time of writing that is 189 unit and integration tests and 40 e2e tests. CI (`.github/workflows/ci.yml`) runs `check` → `typecheck` → `test` first, then `build` and the e2e job in parallel; the Playwright report is uploaded as an artifact when e2e fails.
 
 ## Security
 
@@ -161,7 +163,7 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 The site runs as a Render web service.
 
-- Build command: `bun install && bun run build`. Start command: `bun run start`. (Confirm in the Render dashboard; the Bun version must be 1.4.3.)
+- Build command: `bun install && bun run build`. Start command: `bun run start`. (Confirm in the Render dashboard; the Bun version must be 1.4.5.)
 - **Deploys are manual.** Auto-deploy is off, so pushing to `main` does not deploy; trigger the deploy from the Render dashboard or the Render CLI after CI is green.
 - Environment: `DEEPSEEK_API_KEY` (required); `EVE_BRIEF_TOKEN` (read-only token for the private brief repo; without it EVE uses the committed brief); `SENTRY_AUTH_TOKEN`, `NEXT_PUBLIC_SENTRY_ENV`, `BLOCKED_IPS`, `BLOCKED_IP_PREFIXES` as needed.
 - Safe CSP rollout: set `CSP_REPORT_ONLY=true`, deploy, watch the CSP issues in Sentry, then remove the variable to enforce.

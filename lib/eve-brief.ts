@@ -209,6 +209,17 @@ export function isValidRepoName(repo: string): boolean {
   return /^[\w.-]+\/[\w.-]+$/.test(repo);
 }
 
+function looksLikeJson(text: string): boolean {
+  const trimmed = text.trim();
+  if (!/^[[{]/.test(trimmed)) return false;
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Loads the brief through the Contents API with the raw media type, so the
  * response body is the file itself. Sends If-None-Match when it has an ETag,
@@ -251,6 +262,12 @@ export function createGitHubBriefLoader(
     const text = await readTextWithLimit(res.body, MAX_BRIEF_BYTES);
     if (text.trim().length === 0) {
       throw new Error('brief source returned an empty file');
+    }
+    // A path that names a directory (or a non-raw response) comes back as JSON
+    // with a 200. The brief is Markdown, so JSON is a misconfiguration, and
+    // feeding a private repo's file listing to the model would leak it.
+    if (looksLikeJson(text)) {
+      throw new Error('brief source returned JSON, not a Markdown file (is the path a directory?)');
     }
     return { kind: 'loaded', text, etag: res.headers.get('etag') };
   };

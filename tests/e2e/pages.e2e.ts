@@ -33,8 +33,24 @@ for (const route of sitemapRoutes()) {
     test('has no serious or critical axe violations (WCAG 2.1 A/AA)', async ({ page }) => {
       await page.goto(route);
       await expect(page.locator('h1')).toBeVisible();
-      // Let the entrance animations finish so contrast is measured on settled styles.
+      // Contrast must be measured on settled styles. The entrance animations are created at
+      // hydration and staggered (the hero's scroll hint only finishes ~2.2s in), so: wait for
+      // hydration, give the animations a beat to be created (a delayed one already counts as
+      // running), then wait for every finite animation to end. Endless loops are ignored.
+      await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await page.waitForTimeout(1500);
+      await page.waitForFunction(
+        () =>
+          document
+            .getAnimations()
+            .every(
+              (animation) =>
+                animation.playState !== 'running' ||
+                animation.effect?.getComputedTiming().iterations === Number.POSITIVE_INFINITY,
+            ),
+        undefined,
+        { timeout: 10_000 },
+      );
 
       const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
       const failing = results.violations.filter((v) => FAILING_IMPACTS.has(v.impact ?? ''));

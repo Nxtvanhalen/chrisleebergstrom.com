@@ -3,3 +3,6 @@
 # are named *.e2e.ts (not *.spec.ts) so bun's discovery never picks them up;
 # `bun run test:e2e` runs those.
 root = "tests"
+# Gives Next the AsyncLocalStorage global its server startup normally provides;
+# see the file for why the tests need it.
+preload = ["./tests/setup.ts"]

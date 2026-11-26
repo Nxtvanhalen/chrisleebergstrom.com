@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { OG_IMAGES } from '@/app/og-image';
+import ChatContextSetter from '@/components/ChatContextSetter';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import PageHero from '@/components/PageHero';
@@ -74,10 +76,34 @@ function H3({ children }: { children: ReactNode }) {
 // In-prose links are underlined so they aren't distinguished by colour alone.
 const LINK = 'text-mauve underline underline-offset-2 transition-colors hover:text-white';
 
-export default function PrivacyPage() {
+const privacySchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'Privacy Policy',
+  description:
+    'Privacy policy for chrisleebergstrom.com — how we collect, use, and protect your information.',
+  url: 'https://chrisleebergstrom.com/privacy',
+  dateModified: LAST_UPDATED,
+  publisher: {
+    '@type': 'Organization',
+    '@id': 'https://chrisleebergstrom.com/#organization',
+    name: 'CLB Consulting',
+  },
+};
+
+export default async function PrivacyPage() {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <>
       <Header />
+      <ChatContextSetter context="Privacy" />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(privacySchema) }}
+      />
       <main
         id="main-content"
         tabIndex={-1}

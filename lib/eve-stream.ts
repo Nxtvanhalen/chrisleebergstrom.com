@@ -37,13 +37,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+// A provider's `type` / `code` are short machine identifiers; anything else in
+// those fields is dropped rather than trusted.
+const ERROR_LABEL = /^[\w.:-]{1,64}$/;
+
+function errorLabel(value: unknown): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return typeof value === 'string' && ERROR_LABEL.test(value) ? value : null;
+}
+
+/**
+ * What is safe to log or report about an upstream error object: its `type` and
+ * `code`, never its `message`. A provider's message is free text and can quote
+ * the prompt it rejected, and visitor chat text must not reach the logs or Sentry.
+ */
+export function describeUpstreamError(error: unknown): string {
+  if (!isRecord(error)) return 'upstream error';
+  const parts = [
+    ['type', errorLabel(error.type)],
+    ['code', errorLabel(error.code)],
+  ].flatMap(([name, label]) => (label ? [`${name}=${label}`] : []));
+  return parts.length > 0 ? `upstream error (${parts.join(', ')})` : 'upstream error';
+}
+
+/** The same summary for a raw error response body, which may not be JSON at all. */
+export function describeUpstreamErrorBody(body: string): string {
+  try {
+    const payload: unknown = JSON.parse(body);
+    if (isRecord(payload) && isRecord(payload.error)) return describeUpstreamError(payload.error);
+  } catch {
+    // Not JSON (an HTML gateway page, an empty body): only its size is reported.
+  }
+  return `upstream error (unrecognised body, ${body.length} chars)`;
+}
+
 // Narrows a decoded chunk. Unknown shapes yield no signals and are ignored, so
 // extra fields (usage, logprobs, reasoning_content) never break the stream.
 export function parseStreamChunk(payload: unknown): UpstreamSignal[] {
   if (!isRecord(payload)) return [];
   if (isRecord(payload.error)) {
-    const message = payload.error.message;
-    return [{ kind: 'error', message: typeof message === 'string' ? message : 'upstream error' }];
+    return [{ kind: 'error', message: describeUpstreamError(payload.error) }];
   }
   const choice = Array.isArray(payload.choices) ? payload.choices[0] : undefined;
   if (!isRecord(choice)) return [];
@@ -59,9 +92,12 @@ export function parseStreamChunk(payload: unknown): UpstreamSignal[] {
 }
 
 // SSE events are separated by a blank line. Returns the complete events and the
-// unterminated remainder to carry into the next chunk.
+// unterminated remainder to carry into the next chunk. The SSE standard allows
+// CRLF line endings as well as LF, so CRLF is normalised first: without that a
+// CRLF stream never matches the separator and the whole reply is lost. A "\r"
+// that ends one chunk stays in `rest` and meets its "\n" on the next call.
 export function splitSseBuffer(buffer: string): { events: string[]; rest: string } {
-  const events = buffer.split('\n\n');
+  const events = buffer.replace(/\r\n/g, '\n').split('\n\n');
   const rest = events.pop() ?? '';
   return { events, rest };
 }
@@ -117,7 +153,14 @@ export function createReplyReducer(): ReplyReducer {
         if (signal.reason === 'stop') completed = true;
         else if (signal.reason === 'length') {
           failure = { code: 'incomplete', detail: 'finish_reason: length' };
-        } else failure = { code: 'failed', detail: `finish_reason: ${signal.reason}` };
+        } else {
+          // Provider vocabulary (content_filter, tool_calls…), but still passed through the
+          // label filter so nothing free-form can ride into the logs.
+          failure = {
+            code: 'failed',
+            detail: `finish_reason: ${errorLabel(signal.reason) ?? 'unrecognised'}`,
+          };
+        }
         return null;
       case 'error':
         failure = { code: 'failed', detail: signal.message };

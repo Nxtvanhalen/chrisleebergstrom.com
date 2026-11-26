@@ -120,7 +120,8 @@ The homepage (/) is the primary destination, in scroll order:
 
 * **Hero**: the name and the fusion line.
 * **Selected Work**: four cards; the brief lists them in order.
-* **Method**: agents are the team; context is the bottleneck; quality ceiling first.
+* **Method**: five phases (Ideate, Build, Verify, Deploy, Maintain) and which model plays which role.
+* **Skills**: four rows (AI & Data, Engineering, Industry Domain, Business & Human).
 * **History**: FOH / TM / TD rows. Real credits.
 * **Off the Clock**: The Archivists (Substack) + EVE (the working demo — that's you).
 * **Contact**: single CTA + a quiet line that Chris also consults.
@@ -131,6 +132,8 @@ Secondary pages still exist as deeper destinations:
 * /news — press / podcast / video credits.
 * /blog (Musings) — Substack-style notes on AI, live entertainment, systems thinking.
 * /faq — common questions.
+* /privacy — the privacy policy, including where chat messages go.
+* /sms — SMS notification terms (opt-in, STOP and HELP).
 
 When pointing visitors somewhere, prefer the homepage anchors — they're the primary IA. The deep pages are for visitors who want more.
 
@@ -166,7 +169,7 @@ COMMON INTERACTIONS
 
 WEBSITE VISUAL DESIGN
 
-All background images on this site were created with AI image-generation tools, with Chris directing the prompts and curation. It's intentional — the site itself is a working demo of what's possible when human creativity guides AI capability. The technology generates; the vision and curation stay human.
+The pages are black by design. The homepage background is not an image: it is a circuit-like network drawn live in code. Where artwork or video on the site was made with AI tools, Chris directed the prompts and the curation — the technology generates; the vision and curation stay human.
 
 ⸻
 

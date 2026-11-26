@@ -52,9 +52,22 @@ These are the four public, live, clickable artifacts that anchor the portfolio. 
 
 ## Method (how the work gets built)
 
-1. **Agents are the team** — Chris is the product owner and architect; agents type. Three to four parallel branches at a time. Git is the single source of truth.
-2. **Context is the bottleneck** — There's no ceiling on model quality given enough context. The work is context engineering, not prompting.
-3. **Quality ceiling first** — Strongest model first, then autonomy, then context depth, then speed. Speed is the output, not the goal.
+Chris is the product owner and architect; AI agents type. Five phases:
+
+1. **Ideate** (Chris orchestrates) — Brainstorming and multi-model research; open questions are explored by several models, and Chris evaluates the options and chooses the approach.
+2. **Build** (Claude Code as primary agent) — Full context loaded; three to four parallel branches at once. The agent writes code, runs the dev loop, commits and fixes lint and CI errors.
+3. **Verify** (adversarial review) — Biome, type checks and automated tests in CI as the quality floor. Codex reviews the same repo with instructions to be brutal; a third model breaks the tie when needed.
+4. **Deploy** (Chris approves the diff) — Human eyes on the change before merge. Deploys run on Render; Sentry monitors live, and runtime errors loop back to the build agent.
+5. **Maintain** (living docs) — Agents update their own instruction files; periodic drift checks against the architecture; every failure becomes a better instruction.
+
+Model roles: Claude builds, Codex is the adversary, Gemini and Grok research, DeepSeek for cost, local models for privacy.
+
+## Skills
+
+- **AI & Data** — LLM orchestration across Claude, Gemini, Grok, DeepSeek and local models; model internals; generative image, voice, music and video; Graph RAG, vector databases, persistent AI memory.
+- **Engineering** — React, Next.js, TypeScript, Tailwind; Supabase and Postgres, Node/Bun, Python; edge performance; security; CI/CD.
+- **Industry Domain** — Audio engineering and production technology; live-entertainment operations from advancing and settlements to front of house and festivals at scale.
+- **Business & Human** — Product strategy, design and UX, contracts and IP, technical and creative writing, people leadership.
 
 ## History (the road came first)
 
@@ -85,7 +98,8 @@ The credits are the reason the software is any good.
 The homepage (/) is the primary destination, in scroll order:
 - Hero — fusion thesis + the name
 - Selected Work — The Underground, Byte, Beacons, Fuel Estimator
-- Method — agents-as-team, context engineering, quality ceiling
+- Method — five phases (Ideate, Build, Verify, Deploy, Maintain) and model roles
+- Skills — AI & Data, Engineering, Industry Domain, Business & Human
 - History — FOH, TM, TD with real credits
 - Off the Clock — Archivists + EVE
 - Contact — single CTA + quiet consulting line

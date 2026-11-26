@@ -277,6 +277,25 @@ describe('createGitHubBriefLoader', () => {
     );
   });
 
+  test('a JSON answer (a directory listing) is an error, not a brief', async () => {
+    const listing = JSON.stringify([{ name: 'private-notes.md', type: 'file' }]);
+    const { fetch } = fakeFetch(() => new Response(listing, { status: 200 }));
+    const load = createGitHubBriefLoader(source, fetch);
+    await expect(load({ etag: null, signal: new AbortController().signal })).rejects.toThrow(
+      /returned JSON/,
+    );
+  });
+
+  test('Markdown that merely starts with a bracket is still a brief', async () => {
+    const { fetch } = fakeFetch(
+      () => new Response('[EVE brief] Last updated: today', { status: 200 }),
+    );
+    const load = createGitHubBriefLoader(source, fetch);
+    await expect(load({ etag: null, signal: new AbortController().signal })).resolves.toMatchObject(
+      { kind: 'loaded' },
+    );
+  });
+
   test('an absurdly large file is refused while reading', async () => {
     const { fetch } = fakeFetch(
       () => new Response('x'.repeat(MAX_BRIEF_BYTES + 1), { status: 200 }),

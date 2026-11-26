@@ -9,9 +9,7 @@ import { mauve } from '@/lib/theme';
 import Reveal from './Reveal';
 import SectionHeading from './SectionHeading';
 
-// Shared by both cards. The border colour is animated on hover, so its base
-// value is set inline (see lib/theme).
-// Hover is CSS only (see ProjectCard); motion just runs the reveal.
+// Shared by both cards. Hover is CSS only (see ProjectCard); motion just runs the reveal.
 const CARD =
   'group relative block overflow-hidden rounded-xs border bg-black/40 backdrop-blur-md transition-[border-color,box-shadow] duration-300 border-mauve/22 hover:border-mauve/70 hover:shadow-[0_0_28px_rgba(147,112,219,0.22)]';
 const HOVER_WASH = { background: `linear-gradient(180deg, ${mauve(0)} 60%, ${mauve(0.18)} 100%)` };

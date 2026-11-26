@@ -7,9 +7,9 @@ User-agent: ChatGPT-User
 User-agent: Claude-Web
 User-agent: anthropic-ai
 User-agent: CCBot
-User-agent: Perplexity
+User-agent: PerplexityBot
 User-agent: Bard
-User-agent: Bing
+User-agent: bingbot
 Disallow: /_next/
 Disallow: /api/
 Allow: /

@@ -27,4 +27,4 @@ These identifiers are in the source on purpose and are not secrets:
 - The Google Analytics measurement ID (`components/CookieConsentLoader.tsx`) and the Plausible script URL (`app/layout.tsx`).
 - The Google Search Console verification file (`public/google8c87f62b78695236.html`).
 
-Real secrets (`DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN`) live only in the environment; see `.env.example` for the full list of variables the code reads.
+Real secrets (`DEEPSEEK_API_KEY`, `SENTRY_AUTH_TOKEN`, `EVE_BRIEF_TOKEN`) live only in the environment; see `.env.example` for the full list of variables the code reads.
