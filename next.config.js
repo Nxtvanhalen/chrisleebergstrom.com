@@ -3,6 +3,14 @@ const { withSentryConfig } = require('@sentry/nextjs/config');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Next buffers a request body for the proxy before any route sees it, 10 MB
+    // by default. Past this limit the body is truncated (not refused), so it
+    // must stay above every legitimate body: EVE's chat request is capped at
+    // 64 KiB (lib/eve-validation.ts) and a Sentry envelope on /monitoring can
+    // approach 1 MB. Lower it only with both in mind.
+    proxyClientMaxBodySize: '1mb',
+  },
   poweredByHeader: false,
   generateEtags: false,
   compress: true, // Enable gzip compression

@@ -11,8 +11,8 @@ const LAST_MODIFIED: Record<string, string> = {
   '/blog': '2026-09-28',
   '/news': '2026-09-28',
   '/faq': '2026-09-28',
-  '/privacy': '2026-10-20',
-  '/sms': '2026-07-10',
+  '/privacy': '2026-10-21',
+  '/sms': '2026-11-26',
 };
 
 export default function sitemap(): MetadataRoute.Sitemap {

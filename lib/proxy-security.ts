@@ -73,8 +73,20 @@ export function claimsMobile(userAgent: string): boolean {
   return userAgent.includes('iPhone') || userAgent.includes('Android');
 }
 
+/**
+ * Compared case-insensitively and after percent-decoding, so `/WP-Admin` and
+ * `/%2Eenv` are caught like their plain forms. A path that does not decode is
+ * checked as sent.
+ */
 export function isBlockedPath(pathname: string): boolean {
-  return BLOCKED_PATHS.some((fragment) => pathname.includes(fragment));
+  let decoded = pathname;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    // Malformed escape: fall back to the raw path.
+  }
+  const candidates = [pathname.toLowerCase(), decoded.toLowerCase()];
+  return BLOCKED_PATHS.some((fragment) => candidates.some((path) => path.includes(fragment)));
 }
 
 /** Splits a comma-separated env value into trimmed, non-empty entries. Absent → []. */

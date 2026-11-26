@@ -10,7 +10,7 @@ Chris Lee Bergstrom, all rights reserved:
 - the written content of the site (copy, bios, FAQ answers, press descriptions);
 - the images and video under public/ (including the logo, by Liz Pettengill,
   and the profile and project artwork);
-- the EVE persona and the system prompt text in app/api/chat/route.ts;
+- the EVE persona and the system prompt text in lib/eve-prompt.ts and content/eve/brief.md;
 - the names "Chris Lee Bergstrom" and "EVE" as used here.
 
 You may run, study, modify and redistribute the code under the AGPL-3.0, but

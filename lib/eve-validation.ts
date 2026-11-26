@@ -22,7 +22,16 @@ const MAX_RECEIVED_MESSAGES = 60;
 // with the <ChatContextSetter> in each app/*/page.tsx (ChatContext defaults to
 // Home). Anything else is dropped so visitor-controlled text never reaches the
 // prompt.
-export const EVE_CONTEXTS = ['Home', 'Projects', 'About', 'News', 'Blog', 'FAQ'] as const;
+export const EVE_CONTEXTS = [
+  'Home',
+  'Projects',
+  'About',
+  'News',
+  'Blog',
+  'FAQ',
+  'Privacy',
+  'SMS',
+] as const;
 export type EveContext = (typeof EVE_CONTEXTS)[number];
 
 export function isEveContext(value: unknown): value is EveContext {

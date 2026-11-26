@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 import { composeSystemPrompt } from '@/lib/eve-prompt';
 import { createRateLimiter } from '@/lib/eve-rate-limit';
-import { createEveNdjsonStream } from '@/lib/eve-stream';
+import { createEveNdjsonStream, describeUpstreamErrorBody } from '@/lib/eve-stream';
 import {
   BodyTooLargeError,
   isJsonContentType,
@@ -26,16 +26,38 @@ const MAX_OUTPUT_TOKENS = 800;
 // flow, the idle/total limits in lib/eve-stream.ts take over.
 const CONNECT_TIMEOUT_MS = 20_000;
 
-// One limiter per server instance. 20/min per IP keeps a single visitor from
-// hammering the model; 300/hour overall bounds the DeepSeek bill if traffic is
-// spread across many addresses (bots, VPN pools).
-const chatLimiter = createRateLimiter({
+// Two budgets per server instance, checked at different points:
+//  - per IP, 20/min, before the body is read: keeps one address from hammering
+//    the route, valid requests or not.
+//  - overall, 300/hour, only for requests that passed validation and are about
+//    to reach DeepSeek: bounds the bill when traffic is spread across many
+//    addresses (bots, VPN pools). Malformed requests never spend this budget,
+//    so a flood of junk cannot lock real visitors out of EVE for the hour.
+const HOUR_MS = 60 * 60_000;
+const ipLimiter = createRateLimiter({
   perIpLimit: 20,
   perIpWindowMs: 60_000,
-  globalLimit: 300,
-  globalWindowMs: 60 * 60_000,
+  globalLimit: Number.POSITIVE_INFINITY,
+  globalWindowMs: HOUR_MS,
   maxEntries: 1000,
 });
+const spendLimiter = createRateLimiter({
+  perIpLimit: Number.POSITIVE_INFINITY,
+  perIpWindowMs: HOUR_MS,
+  globalLimit: 300,
+  globalWindowMs: HOUR_MS,
+  // Only ever one key (SPEND_KEY). A second key would need this raised, or the
+  // limiter would evict one entry on every check.
+  maxEntries: 1,
+});
+// The spend budget is shared by everyone, so it is counted under one key.
+const SPEND_KEY = 'all';
+
+function rateLimited(retryAfterMs: number): ClientError {
+  return new ClientError('Rate limit exceeded. Please try again later.', 429, {
+    'Retry-After': String(Math.max(1, Math.ceil(retryAfterMs / 1000))),
+  });
+}
 
 class ClientError extends Error {
   constructor(
@@ -70,12 +92,8 @@ export async function POST(request: Request) {
       throw new ClientError('Content-Type must be application/json', 415);
     }
 
-    const verdict = chatLimiter.check(getClientIp(request.headers));
-    if (!verdict.allowed) {
-      throw new ClientError('Rate limit exceeded. Please try again later.', 429, {
-        'Retry-After': String(Math.max(1, Math.ceil(verdict.retryAfterMs / 1000))),
-      });
-    }
+    const ipVerdict = ipLimiter.check(getClientIp(request.headers));
+    if (!ipVerdict.allowed) throw rateLimited(ipVerdict.retryAfterMs);
 
     // Content-Length is a hint (chunked bodies omit it); readTextWithLimit is
     // the check that actually bounds what we buffer.
@@ -98,6 +116,10 @@ export async function POST(request: Request) {
       throw new ClientError(parsed.error);
     }
     const { messages, context } = parsed.value;
+
+    // A valid request is about to cost money: now it counts against the hour.
+    const spendVerdict = spendLimiter.check(SPEND_KEY);
+    if (!spendVerdict.allowed) throw rateLimited(spendVerdict.retryAfterMs);
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
@@ -160,9 +182,10 @@ export async function POST(request: Request) {
       // Still under the connect timer: a stalled error body is aborted with it.
       const detail = await upstream.text().catch(() => '');
       clearTimeout(connectTimer);
-      console.error(
-        `DeepSeek API error: ${upstream.status} ${upstream.statusText} ${detail.slice(0, 500)}`,
-      );
+      // Only the status and the error's type/code are logged: the message is
+      // free text that can quote the visitor's prompt, and console output also
+      // rides along to Sentry as a breadcrumb.
+      console.error(`DeepSeek API error: ${upstream.status} ${describeUpstreamErrorBody(detail)}`);
       // 401 (bad key) and 402 (balance exhausted) need Chris; everything else
       // is a DeepSeek-side hiccup. All get a Sentry issue so a sustained outage
       // is visible, but the visitor just sees "try again".

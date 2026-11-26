@@ -94,7 +94,10 @@ export function parseSubstackFeed(xml: string): SubstackFeed {
 
   const parsed: unknown = parser.parse(xml);
   const channel = (parsed as { rss?: { channel?: Record<string, unknown> } })?.rss?.channel;
-  if (!channel || typeof channel !== 'object') {
+  // A feed with two <channel> elements parses to an array. Treating that as a
+  // channel would yield an empty post list that the route then caches over the
+  // last good feed, so it is rejected like any other malformed document.
+  if (!channel || typeof channel !== 'object' || Array.isArray(channel)) {
     throw new Error('Invalid RSS feed structure');
   }
 

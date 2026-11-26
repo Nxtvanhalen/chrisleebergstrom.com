@@ -44,7 +44,16 @@ describe('isEveContext', () => {
   test('only allowlisted section names pass', () => {
     for (const ctx of EVE_CONTEXTS) expect(isEveContext(ctx)).toBe(true);
     // One per page: app/*/page.tsx each render a <ChatContextSetter>.
-    expect([...EVE_CONTEXTS]).toEqual(['Home', 'Projects', 'About', 'News', 'Blog', 'FAQ']);
+    expect([...EVE_CONTEXTS]).toEqual([
+      'Home',
+      'Projects',
+      'About',
+      'News',
+      'Blog',
+      'FAQ',
+      'Privacy',
+      'SMS',
+    ]);
     expect(isEveContext('home')).toBe(false);
     expect(isEveContext('Admin')).toBe(false);
     expect(isEveContext('')).toBe(false);

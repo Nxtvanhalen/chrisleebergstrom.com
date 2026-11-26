@@ -202,7 +202,7 @@ describe('POST /api/chat — request validation', () => {
 
   test('the 21st request in a minute from one IP gets 429 with Retry-After', async () => {
     const ip = freshIp();
-    // Invalid bodies still spend a rate-limit slot (the limiter runs before the body read).
+    // Invalid bodies still spend a per-IP slot (that limiter runs before the body read).
     for (let i = 0; i < 20; i++) {
       const res = await POST(chatRequest({ ip, body: 'nope' }));
       expect(res.status).toBe(400);
@@ -215,6 +215,19 @@ describe('POST /api/chat — request validation', () => {
     // Another address is unaffected.
     const other = await POST(chatRequest({ body: 'nope' }));
     expect(other.status).toBe(400);
+  });
+
+  test('a flood of malformed requests does not spend the shared hourly budget', async () => {
+    // More junk than the 300/hour spend cap, each from its own address.
+    for (let i = 0; i < 320; i++) {
+      const res = await POST(chatRequest({ body: 'nope' }));
+      expect(res.status).toBe(400);
+    }
+    const calls = stubFetch(() => new Response(sseReply('Hi'), { status: 200 }));
+    const res = await POST(chatRequest());
+    expect(res.status).toBe(200);
+    await res.text();
+    expect(calls).toHaveLength(1);
   });
 });
 
@@ -246,6 +259,34 @@ describe('POST /api/chat — upstream handling', () => {
       expect(captureException).toHaveBeenCalledTimes(1);
       expect(String(captureException.mock.calls[0][0])).toContain(String(status));
     }
+  });
+
+  test('an upstream error that quotes the visitor is never logged or reported verbatim', async () => {
+    const secret = 'my-private-question-7f3a';
+    const logged: string[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      logged.push(args.map(String).join(' '));
+    };
+    try {
+      captureException.mockClear();
+      stubFetch(
+        () =>
+          new Response(
+            JSON.stringify({
+              error: { message: `Rejected input: ${secret}`, type: 'invalid_request_error' },
+            }),
+            { status: 400 },
+          ),
+      );
+      const res = await POST(chatRequest());
+      expect(res.status).toBe(503);
+    } finally {
+      console.error = original;
+    }
+    expect(logged.join('\n')).toContain('type=invalid_request_error');
+    expect(logged.join('\n')).not.toContain(secret);
+    expect(String(captureException.mock.calls[0][0])).not.toContain(secret);
   });
 
   test('DeepSeek not answering within the connect timeout → 504', async () => {
@@ -411,5 +452,35 @@ describe('POST /api/chat — upstream handling', () => {
       .map((line) => JSON.parse(line));
     expect(events.at(-1)).toMatchObject({ type: 'error', code: 'incomplete' });
     expect(events.some((e) => e.type === 'done')).toBe(false);
+  });
+});
+
+// Last on purpose: it uses up the shared hourly budget, which lives in the
+// route module for the rest of this file's run.
+describe('POST /api/chat — spend cap', () => {
+  test('valid requests stop reaching DeepSeek once the hourly budget is spent', async () => {
+    const calls = stubFetch(() => new Response(sseReply('ok'), { status: 200 }));
+    let refused: Response | null = null;
+    let served = 0;
+    // The budget is 300; earlier tests already spent part of it.
+    for (let i = 0; i <= 300 && !refused; i++) {
+      const res = await POST(chatRequest());
+      if (res.status === 429) refused = res;
+      else {
+        expect(res.status).toBe(200);
+        await res.text();
+        served++;
+      }
+    }
+    expect(refused).not.toBeNull();
+    expect(served).toBeLessThanOrEqual(300);
+    expect(calls).toHaveLength(served);
+    const retryAfter = Number(refused?.headers.get('retry-after'));
+    expect(retryAfter).toBeGreaterThanOrEqual(1);
+    expect(retryAfter).toBeLessThanOrEqual(3600);
+    // A fresh address is refused too: the budget is shared, not per visitor.
+    const other = await POST(chatRequest());
+    expect(other.status).toBe(429);
+    expect(calls).toHaveLength(served);
   });
 });

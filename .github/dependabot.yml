@@ -13,6 +13,12 @@ updates:
     labels:
       - "dependencies"
     groups:
+      # @sentry/nextjs declares @sentry/bun as a peer at its own EXACT version, and loads it
+      # at runtime under `bun --bun next` (nothing in this repo imports it, but the build
+      # fails without it). They must always move in one PR; first matching group wins.
+      sentry:
+        patterns:
+          - "@sentry/*"
       patch-updates:
         update-types:
           - "patch"

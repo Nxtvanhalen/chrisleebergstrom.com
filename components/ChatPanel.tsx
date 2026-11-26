@@ -433,7 +433,7 @@ export default function ChatPanel() {
                     <span className="text-[11px] font-bold tracking-wider text-mauve/90">EVE</span>
                   </div>
                 )}
-                <div className="leading-relaxed markdown-content">
+                <div className="leading-relaxed">
                   {isStreamingMsg ? (
                     // Render raw text while streaming so partial markdown never
                     // flickers; swap to formatted markdown once the reply completes.
@@ -509,7 +509,7 @@ export default function ChatPanel() {
           }
           // Read-only rather than disabled while EVE replies: a disabled input
           // drops focus to <body>, which also breaks Escape-to-close mid-reply.
-          // sendMessage refuses to send while busy.
+          // submit refuses to send while busy.
           readOnly={busy}
           aria-label="Message EVE"
           autoComplete="off"

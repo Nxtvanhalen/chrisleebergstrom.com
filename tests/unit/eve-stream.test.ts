@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import {
   createEveNdjsonStream,
   createReplyReducer,
+  describeUpstreamError,
+  describeUpstreamErrorBody,
   EVE_STREAM_MESSAGES,
   type EveStreamEvent,
   parseSseEvent,
@@ -88,6 +90,44 @@ describe('splitSseBuffer', () => {
   test('an empty buffer yields nothing', () => {
     expect(splitSseBuffer('')).toEqual({ events: [], rest: '' });
   });
+
+  test('CRLF line endings separate events like LF', () => {
+    const { events, rest } = splitSseBuffer('data: a\r\n\r\ndata: b\r\n\r\ndata: partial');
+    expect(events).toEqual(['data: a', 'data: b']);
+    expect(rest).toBe('data: partial');
+  });
+});
+
+describe('describeUpstreamError', () => {
+  test('reports type and code, never the message', () => {
+    const summary = describeUpstreamError({
+      message: 'Rejected prompt: "my secret question"',
+      type: 'invalid_request_error',
+      code: 'content_filter',
+    });
+    expect(summary).toBe('upstream error (type=invalid_request_error, code=content_filter)');
+    expect(summary).not.toContain('secret');
+  });
+
+  test('drops labels that are not short identifiers', () => {
+    expect(describeUpstreamError({ type: 'a visitor said hello', code: 'x'.repeat(65) })).toBe(
+      'upstream error',
+    );
+    expect(describeUpstreamError({ code: 429 })).toBe('upstream error (code=429)');
+    expect(describeUpstreamError(null)).toBe('upstream error');
+  });
+
+  test('summarises a raw error body without echoing it', () => {
+    expect(
+      describeUpstreamErrorBody(
+        JSON.stringify({ error: { message: 'echo: visitor text', type: 'server_error' } }),
+      ),
+    ).toBe('upstream error (type=server_error)');
+    expect(describeUpstreamErrorBody('<html>visitor text</html>')).toBe(
+      'upstream error (unrecognised body, 25 chars)',
+    );
+    expect(describeUpstreamErrorBody('')).toBe('upstream error (unrecognised body, 0 chars)');
+  });
 });
 
 describe('parseStreamChunk', () => {
@@ -107,9 +147,11 @@ describe('parseStreamChunk', () => {
   });
 
   test('an error payload becomes an error signal', () => {
-    expect(parseStreamChunk({ error: { message: 'Insufficient Balance' } })).toEqual([
-      { kind: 'error', message: 'Insufficient Balance' },
-    ]);
+    expect(
+      parseStreamChunk({
+        error: { message: 'Insufficient Balance', type: 'billing_error', code: 402 },
+      }),
+    ).toEqual([{ kind: 'error', message: 'upstream error (type=billing_error, code=402)' }]);
     expect(parseStreamChunk({ error: {} })).toEqual([{ kind: 'error', message: 'upstream error' }]);
   });
 
@@ -191,11 +233,29 @@ describe('createReplyReducer', () => {
     }
   });
 
+  test('a CRLF stream split mid-separator still yields the whole reply', () => {
+    const reply = createReplyReducer();
+    const wire = [chunk({ content: 'Hi' }), chunk({}, 'stop'), 'data: [DONE]\n\n']
+      .join('')
+      .replace(/\n/g, '\r\n');
+    // Cut between a "\r" and its "\n" so the separator arrives in two pieces.
+    const cut = wire.indexOf('\r\n\r\n') + 3;
+    const events = [...reply.push(wire.slice(0, cut)), ...reply.push(wire.slice(cut))];
+    expect(events).toEqual([{ type: 'delta', text: 'Hi' }]);
+    expect(reply.finish()).toEqual({ type: 'done', finalText: 'Hi' });
+  });
+
   test('an error payload mid-stream → failed', () => {
     const reply = createReplyReducer();
     reply.push(TEXT('partial'));
-    reply.push(`data: ${JSON.stringify({ error: { message: 'upstream exploded' } })}\n\n`);
-    expect(reply.failure()).toEqual({ code: 'failed', detail: 'upstream exploded' });
+    reply.push(
+      `data: ${JSON.stringify({ error: { message: 'upstream exploded', type: 'server_error' } })}\n\n`,
+    );
+    // The detail is what gets logged and sent to Sentry: type/code only, no message.
+    expect(reply.failure()).toEqual({
+      code: 'failed',
+      detail: 'upstream error (type=server_error)',
+    });
     expect(reply.finish()).toMatchObject({ type: 'error', code: 'failed' });
   });
 

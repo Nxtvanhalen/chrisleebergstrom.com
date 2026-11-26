@@ -18,7 +18,7 @@ type PageHeroProps = {
   /** Anything else under the title, already wrapped in its own <Reveal>. */
   children?: ReactNode;
   width?: keyof typeof WIDTHS;
-  /** Shorter bottom spacing on large screens (the privacy policy). */
+  /** Shorter bottom spacing on large screens (the privacy policy and the SMS terms). */
   compact?: boolean;
 };
 
